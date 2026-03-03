@@ -60,9 +60,6 @@ export default function TopNavbar() {
     { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
     { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
     { to: "/queues", icon: Shield, label: t("nav.queues") },
-    ...(user?.role === "company_admin" || isSuperAdmin
-      ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
-      : []),
   ];
 
   const managementLinks = [
@@ -70,6 +67,9 @@ export default function TopNavbar() {
     { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
     { to: "/flows", icon: GitBranch, label: "Fluxos" },
     { to: "/contacts", icon: Bot, label: t("nav.contacts") },
+    ...((user?.role === "company_admin" || isSuperAdmin)
+      ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
+      : []),
   ];
 
   const isManagementActive = managementLinks.some((l) => location.pathname === l.to);
