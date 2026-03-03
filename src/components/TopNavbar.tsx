@@ -60,6 +60,9 @@ export default function TopNavbar() {
         { to: "/contacts", icon: Bot, label: t("nav.contacts") },
         { to: "/queues", icon: Shield, label: t("nav.queues") },
         { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
+        ...(user?.role === "company_admin" || user?.role === "super_admin"
+          ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
+          : []),
         { to: "/connection", icon: Settings, label: t("nav.connection") },
       ];
 

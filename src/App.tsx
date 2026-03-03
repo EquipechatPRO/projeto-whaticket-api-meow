@@ -12,6 +12,7 @@ import QuickRepliesPage from "./pages/QuickRepliesPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SuperAdmin from "./pages/SuperAdmin";
+import Users from "./pages/Users";
 import Plans from "./pages/Plans";
 import Settings from "./pages/Settings";
 import { useAuth } from "./stores/auth-store";
@@ -45,6 +46,7 @@ function AppRoutes() {
         <Route path="/quick-replies" element={<QuickRepliesPage />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/connection" element={<Connection />} />
+        <Route path="/users" element={<Users />} />
         <Route
           path="/admin"
           element={
