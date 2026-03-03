@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  whatsmeow-api:
+    build: .
+    container_name: whatsmeow-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - API_PORT=3000

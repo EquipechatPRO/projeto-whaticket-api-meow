@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 97%;
+    --foreground: 210 11% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 11% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 11% 15%;
+    --primary: 142 72% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 10% 96%;
+    --secondary-foreground: 210 11% 15%;
+    --muted: 210 10% 96%;
+    --muted-foreground: 210 10% 40%;
+    --accent: 210 10% 93%;
+    --accent-foreground: 210 11% 15%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 142 72% 29%;
+    --radius: 0.5rem;
+
+    --navbar: 0 0% 100%;
+    --navbar-foreground: 210 11% 15%;
+    --navbar-border: 214 20% 90%;
+
+    --whatsapp: 142 72% 29%;
+    --whatsapp-dark: 142 72% 22%;
+    --whatsapp-light: 142 40% 94%;
+
+    --chat-bg: 30 20% 93%;
+    --chat-sent: 123 38% 82%;
+    --chat-received: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 210 80% 55%;
+    --info-foreground: 0 0% 100%;
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 210 15% 8%;
+    --foreground: 210 10% 95%;
+    --card: 210 15% 11%;
+    --card-foreground: 210 10% 95%;
+    --popover: 210 15% 11%;
+    --popover-foreground: 210 10% 95%;
+    --primary: 142 72% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 12% 16%;
+    --secondary-foreground: 210 10% 95%;
+    --muted: 210 12% 16%;
+    --muted-foreground: 210 10% 55%;
+    --accent: 210 12% 20%;
+    --accent-foreground: 210 10% 95%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 12% 20%;
+    --input: 210 12% 20%;
+    --ring: 142 72% 40%;
+
+    --navbar: 210 15% 6%;
+    --navbar-foreground: 210 10% 95%;
+    --navbar-border: 210 12% 16%;
+
+    --whatsapp: 142 72% 40%;
+    --whatsapp-dark: 142 72% 30%;
+    --whatsapp-light: 142 40% 12%;
+
+    --chat-bg: 210 15% 10%;
+    --chat-sent: 142 40% 20%;
+    --chat-received: 210 15% 14%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 210 80% 55%;
+    --info-foreground: 0 0% 100%;
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+}
