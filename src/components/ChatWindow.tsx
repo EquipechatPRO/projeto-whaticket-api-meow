@@ -118,6 +118,33 @@ export default function ChatWindow({
     setShowAttachMenu(false);
   };
 
+  const handleDocSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Documento deve ter no máximo 16MB");
+      return;
+    }
+    setDocPreview({ file, name: file.name });
+    setShowAttachMenu(false);
+  };
+
+  const handleSendDoc = async () => {
+    if (!docPreview) return;
+    setSending(true);
+    try {
+      const fakeUrl = URL.createObjectURL(docPreview.file);
+      await api.sendDocument(chat.jid, fakeUrl, docPreview.name);
+      setDocPreview(null);
+      onMessageSent();
+      toast.success("Documento enviado");
+    } catch {
+      toast.error("Erro ao enviar documento");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSendImage = async () => {
     if (!imagePreview) return;
     setSending(true);
