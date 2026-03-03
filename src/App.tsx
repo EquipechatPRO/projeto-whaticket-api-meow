@@ -11,6 +11,7 @@ import Queues from "./pages/Queues";
 import QuickRepliesPage from "./pages/QuickRepliesPage";
 import Flows from "./pages/Flows";
 import FlowBuilder from "./pages/FlowBuilder";
+import Groups from "./pages/Groups";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SuperAdmin from "./pages/SuperAdmin";
