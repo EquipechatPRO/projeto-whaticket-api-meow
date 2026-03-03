@@ -15,21 +15,8 @@ import {
 
 // ── Helpers ──
 
-function groupMessagesByHour(messages: Message[]) {
-  const hours: Record<string, { enviadas: number; recebidas: number }> = {};
-  for (let i = 0; i < 24; i++) {
-    hours[String(i).padStart(2, "0")] = { enviadas: 0, recebidas: 0 };
-  }
-  messages.forEach((m) => {
-    const h = new Date(m.timestamp).getHours();
-    const key = String(h).padStart(2, "0");
-    if (hours[key]) {
-      if (m.fromMe) hours[key].enviadas++;
-      else hours[key].recebidas++;
-    }
-  });
-  return Object.entries(hours).map(([hour, data]) => ({ hour: `${hour}h`, ...data }));
-}
+// groupMessagesByHour is now computed server-side via /api/stats
+
 
 function getStatusDistribution(chats: Chat[]) {
   const counts = { attending: 0, waiting: 0, resolved: 0, paused: 0, closed: 0, other: 0 };
