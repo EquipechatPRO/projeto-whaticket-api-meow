@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SuperAdmin from "./pages/SuperAdmin";
 import Plans from "./pages/Plans";
+import Settings from "./pages/Settings";
 import { useAuth } from "./stores/auth-store";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/queues" element={<Queues />} />
         <Route path="/quick-replies" element={<QuickRepliesPage />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/connection" element={<Connection />} />
         <Route
           path="/admin"
