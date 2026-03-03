@@ -238,9 +238,9 @@ export default function Conversations() {
   ];
 
   return (
-    <div className="flex h-full gap-0">
+    <div className="flex h-full gap-2 p-2">
       {/* Left Panel */}
-      <div className="w-[380px] border-r border-border flex flex-col shrink-0 overflow-hidden">
+      <div className="w-[380px] border border-border rounded-2xl flex flex-col shrink-0 overflow-hidden bg-card">
         {/* Main Tabs */}
         <div className="flex border-b border-border mt-2">
           {mainTabs.map((t) => (
@@ -400,7 +400,7 @@ export default function Conversations() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 overflow-hidden bg-card">
+      <div className="flex-1 overflow-hidden bg-card border border-border rounded-2xl">
         {selectedChat ? (
           <ChatWindow
             chat={selectedChat}
