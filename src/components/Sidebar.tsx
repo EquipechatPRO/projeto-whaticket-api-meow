@@ -1,12 +1,14 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, MessageSquare, Users, Wifi, Settings, ListOrdered,
+  LayoutDashboard, MessageSquare, Users, Wifi, Settings, ListOrdered, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/i18n/translations";
+import { useAuth } from "@/stores/auth-store";
 
 export default function Sidebar() {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   const links = [
     { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
@@ -15,6 +17,7 @@ export default function Sidebar() {
     { to: "/queues", icon: ListOrdered, label: t("nav.queues") },
     { to: "/connection", icon: Wifi, label: t("nav.connection") },
     { to: "/settings", icon: Settings, label: t("nav.settings") },
+    ...(user?.role === "super_admin" ? [{ to: "/admin", icon: Shield, label: "Master Admin" }] : []),
   ];
 
   return (

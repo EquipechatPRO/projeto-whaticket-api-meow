@@ -34,12 +34,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route
-          path="/"
-          element={
-            user?.role === "super_admin" ? <SuperAdmin /> : <Dashboard />
-          }
-        />
+        <Route path="/" element={<Dashboard />} />
         <Route path="/conversations" element={<Conversations />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/queues" element={<Queues />} />
