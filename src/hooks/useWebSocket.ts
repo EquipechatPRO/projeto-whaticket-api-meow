@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useWSStatus } from "@/stores/ws-status-store";
+import { useNotificationInbox } from "@/stores/notification-inbox-store";
 import { Message } from "@/services/api";
 import { toast } from "sonner";
 
@@ -48,6 +49,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           switch (evt.type) {
             case "message":
               optionsRef.current.onMessage?.(evt.data);
+              // Push to global notification inbox if not from me
+              if (!evt.data.fromMe) {
+                useNotificationInbox.getState().addNotification({
+                  sender: evt.data.senderName || evt.data.jid,
+                  jid: evt.data.jid,
+                  message: evt.data.text || "📎 Mídia",
+                  timestamp: evt.data.timestamp || new Date().toISOString(),
+                });
+              }
               break;
             case "chat_update":
               optionsRef.current.onChatUpdate?.(evt.data);

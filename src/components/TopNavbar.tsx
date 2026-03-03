@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/i18n/translations";
 import { useSettingsStore, type Theme, type Language } from "@/stores/settings-store";
 import { useNotificationPrefs } from "@/stores/notification-store";
+import { useNotificationInbox } from "@/stores/notification-inbox-store";
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
   useEffect(() => {
@@ -34,19 +35,12 @@ export default function TopNavbar() {
 
   const { theme, setTheme, language, setLanguage } = useSettingsStore();
   const { soundEnabled, setSoundEnabled, toastEnabled, setToastEnabled, pushEnabled, setPushEnabled } = useNotificationPrefs();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, getTimeAgo } = useNotificationInbox();
 
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
   const [notifTab, setNotifTab] = useState<"messages" | "settings">("messages");
-
-  const mockNotifications = [
-    { id: "1", sender: "Maria Santos", message: "Olá, preciso de ajuda com meu pedido #4521", time: "2min", read: false },
-    { id: "2", sender: "João Oliveira", message: "O boleto ainda não chegou, podem verificar?", time: "5min", read: false },
-    { id: "3", sender: "Pedro Alves", message: "Obrigado pelo atendimento!", time: "12min", read: false },
-    { id: "4", sender: "Carla Mendes", message: "Quando meu produto será entregue?", time: "30min", read: true },
-    { id: "5", sender: "Lucas Ferreira", message: "Preciso trocar minha senha", time: "1h", read: true },
-  ];
 
   const langRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -160,51 +154,59 @@ export default function TopNavbar() {
             title={t("settings.notifications")}
           >
             <Bell className="w-4 h-4" />
-            {mockNotifications.filter((n) => !n.read).length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                {mockNotifications.filter((n) => !n.read).length}
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </button>
           {showNotifMenu && (
             <div className="absolute right-0 top-10 w-80 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-              {/* Header with tabs */}
+              {/* Header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
                 <p className="text-sm font-semibold text-foreground">{t("settings.notifications")}</p>
-                <button
-                  onClick={() => setNotifTab(notifTab === "messages" ? "settings" : "messages")}
-                  className="text-[10px] font-medium text-primary hover:underline"
-                >
-                  {notifTab === "messages" ? t("settings.title").split(" ")[0] : "Mensagens"}
-                </button>
+                <div className="flex items-center gap-2">
+                  {notifTab === "messages" && unreadCount > 0 && (
+                    <button onClick={markAllAsRead} className="text-[10px] font-medium text-primary hover:underline">
+                      Marcar todas como lidas
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setNotifTab(notifTab === "messages" ? "settings" : "messages")}
+                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    {notifTab === "messages" ? "⚙️" : "💬"}
+                  </button>
+                </div>
               </div>
 
               {notifTab === "messages" ? (
                 <div className="max-h-72 overflow-y-auto">
-                  {mockNotifications.length === 0 ? (
+                  {notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                       <Bell className="w-6 h-6 mb-2 opacity-30" />
                       <p className="text-xs">Nenhuma notificação</p>
+                      <p className="text-[10px] mt-1">Mensagens recebidas via WebSocket aparecerão aqui</p>
                     </div>
                   ) : (
-                    mockNotifications.map((n) => (
+                    notifications.map((n) => (
                       <button
                         key={n.id}
-                        onClick={() => { navigate("/conversations"); setShowNotifMenu(false); }}
+                        onClick={() => { markAsRead(n.id); navigate("/conversations"); setShowNotifMenu(false); }}
                         className={cn(
                           "w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/50 transition-colors border-b border-border last:border-0",
                           !n.read && "bg-primary/5"
                         )}
                       >
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-primary">{n.sender.charAt(0)}</span>
+                          <span className="text-xs font-bold text-primary">{n.sender.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <span className={cn("text-xs truncate", n.read ? "text-muted-foreground" : "font-semibold text-foreground")}>
                               {n.sender}
                             </span>
-                            <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{n.time}</span>
+                            <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{getTimeAgo(n.timestamp)}</span>
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
                         </div>
