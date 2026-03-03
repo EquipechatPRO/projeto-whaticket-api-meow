@@ -28,6 +28,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
 
 export default function TopNavbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState("");
   const wsConnected = useWSStatus((s) => s.isConnected);
