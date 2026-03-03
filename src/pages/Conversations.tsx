@@ -37,6 +37,8 @@ export default function Conversations() {
   const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedJid, setSelectedJid] = useState<string | null>(null);
   const [mainTab, setMainTab] = useState<MainTab>("inbox");
   const [subTab, setSubTab] = useState<SubTab>("attending");
