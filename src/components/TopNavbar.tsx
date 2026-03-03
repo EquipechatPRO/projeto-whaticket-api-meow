@@ -38,6 +38,15 @@ export default function TopNavbar() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
+  const [notifTab, setNotifTab] = useState<"messages" | "settings">("messages");
+
+  const mockNotifications = [
+    { id: "1", sender: "Maria Santos", message: "Olá, preciso de ajuda com meu pedido #4521", time: "2min", read: false },
+    { id: "2", sender: "João Oliveira", message: "O boleto ainda não chegou, podem verificar?", time: "5min", read: false },
+    { id: "3", sender: "Pedro Alves", message: "Obrigado pelo atendimento!", time: "12min", read: false },
+    { id: "4", sender: "Carla Mendes", message: "Quando meu produto será entregue?", time: "30min", read: true },
+    { id: "5", sender: "Lucas Ferreira", message: "Preciso trocar minha senha", time: "1h", read: true },
+  ];
 
   const langRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
