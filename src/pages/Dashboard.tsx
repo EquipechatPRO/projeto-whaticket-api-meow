@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import api, { Chat, Message } from "@/services/api";
 import {
   Wifi, WifiOff, MessageSquare, Users, Clock, TrendingUp,
@@ -146,33 +146,44 @@ export default function Dashboard() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+
+  const loadData = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
+    try {
+      const [statusRes, chatsRes] = await Promise.all([
+        api.getStatus().catch(() => ({ connected: false, phone: "", name: "" })),
+        api.getChats().catch(() => [] as Chat[]),
+      ]);
+      setStatus(statusRes);
+      setChats(chatsRes);
+
+      const chatSlice = chatsRes.slice(0, 20);
+      const msgResults = await Promise.all(
+        chatSlice.map((c) => api.getMessages(c.jid, 100).catch(() => [] as Message[]))
+      );
+      setAllMessages(msgResults.flat());
+      setLastUpdate(new Date());
+    } catch (e) {
+      console.error("Dashboard load error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [statusRes, chatsRes] = await Promise.all([
-          api.getStatus().catch(() => ({ connected: false, phone: "", name: "" })),
-          api.getChats().catch(() => [] as Chat[]),
-        ]);
-        setStatus(statusRes);
-        setChats(chatsRes);
+    loadData(true);
+  }, [loadData]);
 
-        // Fetch messages for each chat in parallel (limited to first 20 chats)
-        const chatSlice = chatsRes.slice(0, 20);
-        const msgResults = await Promise.all(
-          chatSlice.map((c) => api.getMessages(c.jid, 100).catch(() => [] as Message[]))
-        );
-        setAllMessages(msgResults.flat());
-      } catch (e) {
-        console.error("Dashboard load error:", e);
-      } finally {
-        setLoading(false);
-      }
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => loadData(false), 30000);
     }
-    loadData();
-  }, []);
+    return () => clearInterval(intervalRef.current);
+  }, [autoRefresh, loadData]);
 
   // Derived data
   const hourlyMessages = useMemo(() => groupMessagesByHour(allMessages), [allMessages]);
@@ -197,12 +208,24 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
           <p className="text-xs text-muted-foreground">
-            Dados em tempo real da API • {chats.length} conversas carregadas
+            Dados em tempo real da API • {chats.length} conversas
+            {lastUpdate && ` • Atualizado ${lastUpdate.toLocaleTimeString("pt-BR")}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+              autoRefresh
+                ? "bg-primary/10 text-primary border-primary/20"
+                : "bg-card text-muted-foreground border-border"
+            )}
+          >
+            {autoRefresh ? "⏱ Auto 30s" : "⏸ Pausado"}
+          </button>
+          <button
+            onClick={() => loadData(true)}
             className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Atualizar
