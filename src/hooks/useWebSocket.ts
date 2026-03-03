@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useWSStatus } from "@/stores/ws-status-store";
-import { useNotificationInbox } from "@/stores/notification-inbox-store";
+import { useNotificationInbox, playNotificationSound } from "@/stores/notification-inbox-store";
 import { Message } from "@/services/api";
 import { toast } from "sonner";
 
@@ -57,6 +57,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
                   message: evt.data.text || "📎 Mídia",
                   timestamp: evt.data.timestamp || new Date().toISOString(),
                 });
+                playNotificationSound();
               }
               break;
             case "chat_update":
