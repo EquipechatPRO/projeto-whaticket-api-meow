@@ -813,6 +813,83 @@ export default function ChatWindow({
         open={showContactPanel}
         onClose={() => setShowContactPanel(false)}
       />
+
+      <ContactPickerModal
+        open={showContactPicker}
+        onClose={() => setShowContactPicker(false)}
+        onSend={async (contactJid, contactName) => {
+          try {
+            await api.sendContact(chat.jid, contactJid);
+            onMessageSent();
+            toast.success(`Contato "${contactName}" enviado`);
+          } catch { toast.error("Erro ao enviar contato"); }
+        }}
+      />
+
+      <LocationModal
+        open={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSend={async (lat, lng, name) => {
+          try {
+            await api.sendLocation(chat.jid, lat, lng, name);
+            onMessageSent();
+            toast.success("Localização enviada");
+          } catch { toast.error("Erro ao enviar localização"); }
+        }}
+      />
+
+      <PollModal
+        open={showPollModal}
+        onClose={() => setShowPollModal(false)}
+        onSend={async (question, options) => {
+          try {
+            await api.sendText(chat.jid, `📊 *Enquete: ${question}*\n\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\n_Responda com o número da opção_`);
+            onMessageSent();
+            toast.success("Enquete enviada");
+          } catch { toast.error("Erro ao enviar enquete"); }
+        }}
+      />
+
+      <EventModal
+        open={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onSend={async (name, date, time, description) => {
+          const msg = `📅 *Evento: ${name}*\n🗓️ Data: ${date}${time ? ` às ${time}` : ""}${description ? `\n📝 ${description}` : ""}`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Evento enviado");
+          } catch { toast.error("Erro ao enviar evento"); }
+        }}
+      />
+
+      <PaymentModal
+        open={showPixModal}
+        title="Enviar Pix"
+        onClose={() => setShowPixModal(false)}
+        onSend={async (amount, description, pixKey) => {
+          const msg = `💰 *Pagamento via Pix*\n\n💵 Valor: R$ ${amount}${pixKey ? `\n🔑 Chave: ${pixKey}` : ""}${description ? `\n📝 ${description}` : ""}\n\n_Envie o comprovante após o pagamento_`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Dados Pix enviados");
+          } catch { toast.error("Erro ao enviar Pix"); }
+        }}
+      />
+
+      <PaymentModal
+        open={showChargeModal}
+        title="Criar Cobrança"
+        onClose={() => setShowChargeModal(false)}
+        onSend={async (amount, description) => {
+          const msg = `💳 *Cobrança*\n\n💵 Valor: R$ ${amount}${description ? `\n📝 ${description}` : ""}\n\n_Aguardamos a confirmação do pagamento_`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Cobrança enviada");
+          } catch { toast.error("Erro ao enviar cobrança"); }
+        }}
+      />
     </div>
   );
 }
