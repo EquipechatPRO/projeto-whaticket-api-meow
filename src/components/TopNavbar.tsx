@@ -26,6 +26,7 @@ const navLinks = [
 
 export default function TopNavbar() {
   const [searchText, setSearchText] = useState("");
+  const wsConnected = useWSStatus((s) => s.isConnected);
 
   return (
     <header className="h-14 bg-navbar border-b border-navbar-border flex items-center px-4 gap-3 shrink-0 z-50">
