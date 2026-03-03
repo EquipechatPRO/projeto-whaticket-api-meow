@@ -10,12 +10,23 @@ interface Props {
 }
 
 export default function NodeConfigPanel({ node, onUpdate, onClose }: Props) {
-  const { queues } = useQueueStore();
+  const { queues, addQueue } = useQueueStore();
+  const [showNewQueue, setShowNewQueue] = useState(false);
+  const [newQueueName, setNewQueueName] = useState("");
 
   if (!node) return null;
   const d = node.data;
 
   const update = (patch: Partial<FlowNodeData>) => onUpdate(node.id, patch);
+
+  const handleCreateQueue = () => {
+    if (!newQueueName.trim()) return;
+    const newQueue = { id: `q-${Date.now()}`, name: newQueueName.trim(), color: "210 80% 50%", users: [] };
+    addQueue(newQueue);
+    update({ queueId: newQueue.id, queueName: newQueue.name });
+    setNewQueueName("");
+    setShowNewQueue(false);
+  };
 
   return (
     <div className="w-80 bg-card border-l border-border h-full overflow-y-auto">
@@ -97,21 +108,60 @@ export default function NodeConfigPanel({ node, onUpdate, onClose }: Props) {
 
         {/* Queue config */}
         {d.type === "queue" && (
-          <div>
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Fila de atendimento</label>
-            <select
-              value={d.queueId || ""}
-              onChange={(e) => {
-                const q = queues.find((q) => q.id === e.target.value);
-                update({ queueId: e.target.value, queueName: q?.name || "" });
-              }}
-              className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none"
-            >
-              <option value="">Selecione uma fila</option>
-              {queues.map((q) => (
-                <option key={q.id} value={q.id}>{q.name}</option>
-              ))}
-            </select>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Fila de atendimento</label>
+              <select
+                value={d.queueId || ""}
+                onChange={(e) => {
+                  const q = queues.find((q) => q.id === e.target.value);
+                  update({ queueId: e.target.value, queueName: q?.name || "" });
+                }}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+              >
+                <option value="">Selecione uma fila</option>
+                {queues.map((q) => (
+                  <option key={q.id} value={q.id}>{q.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Create new queue inline */}
+            {!showNewQueue ? (
+              <button
+                onClick={() => setShowNewQueue(true)}
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+              >
+                <Plus className="w-3 h-3" /> Criar nova fila
+              </button>
+            ) : (
+              <div className="bg-secondary/50 border border-border rounded-lg p-3 space-y-2">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase block">Nova fila</label>
+                <input
+                  type="text"
+                  value={newQueueName}
+                  onChange={(e) => setNewQueueName(e.target.value)}
+                  placeholder="Nome da fila"
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateQueue()}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateQueue}
+                    disabled={!newQueueName.trim()}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    Criar
+                  </button>
+                  <button
+                    onClick={() => { setShowNewQueue(false); setNewQueueName(""); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
