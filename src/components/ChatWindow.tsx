@@ -678,21 +678,21 @@ export default function ChatWindow({
                     Áudio
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Envio de contato em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowContactPicker(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <Contact className="w-4 h-4 text-sky-500" />
                     Contato
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Enquetes em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowPollModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <BarChart3 className="w-4 h-4 text-green-500" />
                     Enquete
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Eventos em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowEventModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <CalendarDays className="w-4 h-4 text-amber-500" />
@@ -706,14 +706,14 @@ export default function ChatWindow({
                     Nova figurinha
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Pix em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowPixModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <DollarSign className="w-4 h-4 text-emerald-500" />
                     Pix
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Catálogo em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowLocationModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <MapPin className="w-4 h-4 text-indigo-500" />
@@ -732,7 +732,7 @@ export default function ChatWindow({
                     Resposta rápida
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Cobranças em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowChargeModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <CreditCard className="w-4 h-4 text-rose-500" />
