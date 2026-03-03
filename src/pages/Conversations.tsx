@@ -24,6 +24,7 @@ type MainTab = "inbox" | "paused" | "resolved" | "search";
 type SubTab = "attending" | "waiting" | "bot" | "groups";
 
 export default function Conversations() {
+  const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedJid, setSelectedJid] = useState<string | null>(null);
