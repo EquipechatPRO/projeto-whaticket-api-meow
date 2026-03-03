@@ -1,25 +1,8 @@
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Zap, Search, Plus, X, Edit3, Trash2 } from "lucide-react";
+import { Zap, X } from "lucide-react";
+import { useQuickReplyStore, QuickReply } from "@/stores/quick-reply-store";
 
-export interface QuickReply {
-  id: string;
-  shortcut: string;
-  title: string;
-  text: string;
-  category: string;
-}
-
-const DEFAULT_REPLIES: QuickReply[] = [
-  { id: "1", shortcut: "ola", title: "Saudação", text: "Olá! 👋 Seja bem-vindo(a)! Como posso ajudá-lo(a) hoje?", category: "Geral" },
-  { id: "2", shortcut: "aguarde", title: "Aguardar", text: "Por favor, aguarde um momento enquanto verifico essa informação para você.", category: "Geral" },
-  { id: "3", shortcut: "obrigado", title: "Agradecimento", text: "Agradecemos o seu contato! Se precisar de algo mais, estamos à disposição. 😊", category: "Geral" },
-  { id: "4", shortcut: "horario", title: "Horário", text: "Nosso horário de atendimento é de segunda a sexta, das 8h às 18h.", category: "Informações" },
-  { id: "5", shortcut: "prazo", title: "Prazo entrega", text: "O prazo de entrega é de 3 a 7 dias úteis após a confirmação do pagamento.", category: "Vendas" },
-  { id: "6", shortcut: "pix", title: "Dados PIX", text: "Segue nossa chave PIX para pagamento:\n📧 pagamentos@empresa.com\nApós o pagamento, envie o comprovante aqui neste chat.", category: "Vendas" },
-  { id: "7", shortcut: "encerrar", title: "Encerramento", text: "Foi um prazer atendê-lo(a)! Caso precise de mais alguma coisa, não hesite em nos procurar. Tenha um ótimo dia! 🙏", category: "Geral" },
-  { id: "8", shortcut: "transferir", title: "Transferência", text: "Vou transferir seu atendimento para o setor responsável. Em instantes você será atendido(a).", category: "Geral" },
-];
+export type { QuickReply } from "@/stores/quick-reply-store";
 
 interface QuickReplyListProps {
   filter: string;
@@ -28,7 +11,7 @@ interface QuickReplyListProps {
 }
 
 export function QuickReplyList({ filter, onSelect, onClose }: QuickReplyListProps) {
-  const [replies] = useState<QuickReply[]>(DEFAULT_REPLIES);
+  const replies = useQuickReplyStore((s) => s.replies);
 
   const filtered = replies.filter((r) => {
     const q = filter.toLowerCase();

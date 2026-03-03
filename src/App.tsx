@@ -7,6 +7,7 @@ import Connection from "./pages/Connection";
 import Contacts from "./pages/Contacts";
 import Dashboard from "./pages/Dashboard";
 import Queues from "./pages/Queues";
+import QuickRepliesPage from "./pages/QuickRepliesPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/conversations" element={<Conversations />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/queues" element={<Queues />} />
+            <Route path="/quick-replies" element={<QuickRepliesPage />} />
             <Route path="/connection" element={<Connection />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
