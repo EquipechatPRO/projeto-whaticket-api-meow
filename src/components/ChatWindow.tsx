@@ -24,8 +24,10 @@ import {
   Mic,
   MicOff,
   FileAudio,
+  FileText,
   Play,
   PauseCircle,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +73,8 @@ export default function ChatWindow({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [docPreview, setDocPreview] = useState<{ file: File; name: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,6 +116,33 @@ export default function ChatWindow({
     }
     setImagePreview({ file, url: URL.createObjectURL(file) });
     setShowAttachMenu(false);
+  };
+
+  const handleDocSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Documento deve ter no máximo 16MB");
+      return;
+    }
+    setDocPreview({ file, name: file.name });
+    setShowAttachMenu(false);
+  };
+
+  const handleSendDoc = async () => {
+    if (!docPreview) return;
+    setSending(true);
+    try {
+      const fakeUrl = URL.createObjectURL(docPreview.file);
+      await api.sendDocument(chat.jid, fakeUrl, docPreview.name);
+      setDocPreview(null);
+      onMessageSent();
+      toast.success("Documento enviado");
+    } catch {
+      toast.error("Erro ao enviar documento");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSendImage = async () => {
@@ -451,7 +482,23 @@ export default function ChatWindow({
                     </div>
                   )}
 
-                  {/* Text message */}
+                  {/* Document message */}
+                  {msg.type === "document" && msg.mediaUrl && (
+                    <div
+                      className="flex items-center gap-3 min-w-[200px] p-1 cursor-pointer hover:opacity-80"
+                      onClick={() => window.open(msg.mediaUrl, "_blank")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{msg.caption || "Documento"}</p>
+                        <p className="text-[10px] text-muted-foreground">Clique para abrir</p>
+                      </div>
+                      <Download className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </div>
+                  )}
+
                   {(msg.type === "text" || (!msg.type && !msg.mediaUrl)) && (
                     <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{msg.text}</p>
                   )}
@@ -504,10 +551,42 @@ export default function ChatWindow({
         </div>
       )}
 
+      {/* Document Preview */}
+      {docPreview && !imagePreview && (
+        <div className="border-t border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3 bg-secondary rounded-lg p-3">
+            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{docPreview.name}</p>
+              <p className="text-[11px] text-muted-foreground">{(docPreview.file.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <button
+              onClick={() => setDocPreview(null)}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={handleSendDoc}
+              disabled={sending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Enviar documento
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
-      {!imagePreview && (
+      {!imagePreview && !docPreview && (
         <div className="border-t border-border bg-card px-4 py-3">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar" className="hidden" onChange={handleDocSelect} />
 
           {isRecording ? (
             <div className="flex items-center gap-3">
@@ -552,6 +631,13 @@ export default function ChatWindow({
                   >
                     <Image className="w-3.5 h-3.5 text-primary" />
                     Enviar imagem
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    Enviar documento
                   </button>
                   <button
                     onClick={() => { setShowAttachMenu(false); startRecording(); }}
