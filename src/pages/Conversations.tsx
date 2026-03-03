@@ -37,12 +37,60 @@ export default function Conversations() {
     api.getMessages(jid).then(setMessages);
   };
 
+  const updateChatStatus = (jid: string, status: string) => {
+    setChats((prev) =>
+      prev.map((c) => (c.jid === jid ? { ...c, status } : c))
+    );
+  };
+
+  const handleReturn = (jid: string) => {
+    updateChatStatus(jid, "waiting");
+    setSelectedJid(null);
+    setMessages([]);
+  };
+
+  const handlePause = (jid: string) => {
+    updateChatStatus(jid, "paused");
+    setSelectedJid(null);
+    setMessages([]);
+    setMainTab("paused");
+  };
+
+  const handleFinish = (jid: string) => {
+    updateChatStatus(jid, "resolved");
+    setSelectedJid(null);
+    setMessages([]);
+    setMainTab("resolved");
+  };
+
+  const handleTransfer = (jid: string) => {
+    updateChatStatus(jid, "waiting");
+    setSelectedJid(null);
+    setMessages([]);
+  };
+
+  const handleDelete = (jid: string) => {
+    setChats((prev) => prev.filter((c) => c.jid !== jid));
+    setSelectedJid(null);
+    setMessages([]);
+  };
+
+  const handleBack = () => {
+    setSelectedJid(null);
+    setMessages([]);
+  };
+
   const filteredChats = chats
     .filter((c) => {
-      if (subTab === "groups") return c.isGroup;
-      if (subTab === "waiting") return !c.isGroup && c.status === "waiting";
-      if (subTab === "bot") return false; // placeholder
-      return !c.isGroup && c.status !== "waiting";
+      if (mainTab === "paused") return c.status === "paused";
+      if (mainTab === "resolved") return c.status === "resolved";
+      if (mainTab === "inbox" || mainTab === "search") {
+        if (subTab === "groups") return c.isGroup && c.status !== "paused" && c.status !== "resolved";
+        if (subTab === "waiting") return !c.isGroup && c.status === "waiting";
+        if (subTab === "bot") return false;
+        return !c.isGroup && c.status !== "waiting" && c.status !== "paused" && c.status !== "resolved";
+      }
+      return true;
     })
     .filter((c) =>
       search ? c.name.toLowerCase().includes(search.toLowerCase()) : true
@@ -51,16 +99,18 @@ export default function Conversations() {
   const selectedChat = chats.find((c) => c.jid === selectedJid);
 
   const counts = {
-    attending: chats.filter((c) => !c.isGroup && c.status !== "waiting").length,
+    attending: chats.filter((c) => !c.isGroup && !["waiting", "paused", "resolved"].includes(c.status || "")).length,
     waiting: chats.filter((c) => !c.isGroup && c.status === "waiting").length,
     bot: 0,
-    groups: chats.filter((c) => c.isGroup).length,
+    groups: chats.filter((c) => c.isGroup && !["paused", "resolved"].includes(c.status || "")).length,
+    paused: chats.filter((c) => c.status === "paused").length,
+    resolved: chats.filter((c) => c.status === "resolved").length,
   };
 
-  const mainTabs: { key: MainTab; label: string; icon: typeof Inbox }[] = [
+  const mainTabs: { key: MainTab; label: string; icon: typeof Inbox; count?: number }[] = [
     { key: "inbox", label: "Inbox", icon: Inbox },
-    { key: "paused", label: "Pausados", icon: PauseCircle },
-    { key: "resolved", label: "Resolvidos", icon: CheckCircle },
+    { key: "paused", label: "Pausados", icon: PauseCircle, count: counts.paused },
+    { key: "resolved", label: "Resolvidos", icon: CheckCircle, count: counts.resolved },
     { key: "search", label: "Busca", icon: Search },
   ];
 
@@ -82,13 +132,20 @@ export default function Conversations() {
               key={t.key}
               onClick={() => setMainTab(t.key)}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors border-b-2",
+                "flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors border-b-2 relative",
                 mainTab === t.key
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              <t.icon className="w-4 h-4" />
+              <div className="relative">
+                <t.icon className="w-4 h-4" />
+                {t.count != null && t.count > 0 && (
+                  <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center bg-warning text-warning-foreground">
+                    {t.count}
+                  </span>
+                )}
+              </div>
               {t.label}
             </button>
           ))}
@@ -119,34 +176,36 @@ export default function Conversations() {
           </select>
         </div>
 
-        {/* Sub Tabs */}
-        <div className="flex border-b border-border">
-          {subTabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSubTab(t.key)}
-              className={cn(
-                "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-bold transition-colors relative",
-                subTab === t.key
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <div className="relative">
-                <t.icon className="w-4 h-4" />
-                {t.count > 0 && (
-                  <span className={cn("absolute -top-2 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center", t.color)}>
-                    {t.count}
-                  </span>
+        {/* Sub Tabs - only show on inbox/search */}
+        {(mainTab === "inbox" || mainTab === "search") && (
+          <div className="flex border-b border-border">
+            {subTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setSubTab(t.key)}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-bold transition-colors relative",
+                  subTab === t.key
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
-              </div>
-              <span className="mt-1">{t.label}</span>
-              {subTab === t.key && (
-                <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-t" />
-              )}
-            </button>
-          ))}
-        </div>
+              >
+                <div className="relative">
+                  <t.icon className="w-4 h-4" />
+                  {t.count > 0 && (
+                    <span className={cn("absolute -top-2 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center", t.color)}>
+                      {t.count}
+                    </span>
+                  )}
+                </div>
+                <span className="mt-1">{t.label}</span>
+                {subTab === t.key && (
+                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-t" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Search in list */}
         {mainTab === "search" && (
@@ -179,6 +238,12 @@ export default function Conversations() {
             chat={selectedChat}
             messages={messages}
             onMessageSent={() => loadMessages(selectedChat.jid)}
+            onReturn={handleReturn}
+            onPause={handlePause}
+            onFinish={handleFinish}
+            onTransfer={handleTransfer}
+            onDelete={handleDelete}
+            onBack={handleBack}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-chat-bg">
