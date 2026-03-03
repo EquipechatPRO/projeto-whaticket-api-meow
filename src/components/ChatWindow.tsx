@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
 import ContactPanel from "@/components/ContactPanel";
 import { QuickReplyList, QuickReply } from "@/components/QuickReplies";
+import ContactPickerModal from "@/components/modals/ContactPickerModal";
+import LocationModal from "@/components/modals/LocationModal";
+import PollModal from "@/components/modals/PollModal";
+import EventModal from "@/components/modals/EventModal";
+import PaymentModal from "@/components/modals/PaymentModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -86,6 +91,13 @@ export default function ChatWindow({
   const docInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [docPreview, setDocPreview] = useState<{ file: File; name: string } | null>(null);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [stickerInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -666,46 +678,49 @@ export default function ChatWindow({
                     Áudio
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Envio de contato em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowContactPicker(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <Contact className="w-4 h-4 text-sky-500" />
                     Contato
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Enquetes em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowPollModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <BarChart3 className="w-4 h-4 text-green-500" />
                     Enquete
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Eventos em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowEventModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <CalendarDays className="w-4 h-4 text-amber-500" />
                     Evento
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Figurinhas em breve"); }}
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      toast.info("Envie uma imagem para converter em figurinha. Funcionalidade requer backend real.");
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <Sticker className="w-4 h-4 text-teal-500" />
                     Nova figurinha
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Pix em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowPixModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <DollarSign className="w-4 h-4 text-emerald-500" />
                     Pix
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Catálogo em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowLocationModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <MapPin className="w-4 h-4 text-indigo-500" />
-                    Catálogo
+                    Localização
                   </button>
                   <button
                     onClick={() => {
@@ -720,7 +735,7 @@ export default function ChatWindow({
                     Resposta rápida
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Cobranças em breve"); }}
+                    onClick={() => { setShowAttachMenu(false); setShowChargeModal(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <CreditCard className="w-4 h-4 text-rose-500" />
@@ -797,6 +812,83 @@ export default function ChatWindow({
         chat={chat}
         open={showContactPanel}
         onClose={() => setShowContactPanel(false)}
+      />
+
+      <ContactPickerModal
+        open={showContactPicker}
+        onClose={() => setShowContactPicker(false)}
+        onSend={async (contactJid, contactName) => {
+          try {
+            await api.sendContact(chat.jid, contactJid);
+            onMessageSent();
+            toast.success(`Contato "${contactName}" enviado`);
+          } catch { toast.error("Erro ao enviar contato"); }
+        }}
+      />
+
+      <LocationModal
+        open={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSend={async (lat, lng, name) => {
+          try {
+            await api.sendLocation(chat.jid, lat, lng, name);
+            onMessageSent();
+            toast.success("Localização enviada");
+          } catch { toast.error("Erro ao enviar localização"); }
+        }}
+      />
+
+      <PollModal
+        open={showPollModal}
+        onClose={() => setShowPollModal(false)}
+        onSend={async (question, options) => {
+          try {
+            await api.sendText(chat.jid, `📊 *Enquete: ${question}*\n\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\n_Responda com o número da opção_`);
+            onMessageSent();
+            toast.success("Enquete enviada");
+          } catch { toast.error("Erro ao enviar enquete"); }
+        }}
+      />
+
+      <EventModal
+        open={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onSend={async (name, date, time, description) => {
+          const msg = `📅 *Evento: ${name}*\n🗓️ Data: ${date}${time ? ` às ${time}` : ""}${description ? `\n📝 ${description}` : ""}`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Evento enviado");
+          } catch { toast.error("Erro ao enviar evento"); }
+        }}
+      />
+
+      <PaymentModal
+        open={showPixModal}
+        title="Enviar Pix"
+        onClose={() => setShowPixModal(false)}
+        onSend={async (amount, description, pixKey) => {
+          const msg = `💰 *Pagamento via Pix*\n\n💵 Valor: R$ ${amount}${pixKey ? `\n🔑 Chave: ${pixKey}` : ""}${description ? `\n📝 ${description}` : ""}\n\n_Envie o comprovante após o pagamento_`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Dados Pix enviados");
+          } catch { toast.error("Erro ao enviar Pix"); }
+        }}
+      />
+
+      <PaymentModal
+        open={showChargeModal}
+        title="Criar Cobrança"
+        onClose={() => setShowChargeModal(false)}
+        onSend={async (amount, description) => {
+          const msg = `💳 *Cobrança*\n\n💵 Valor: R$ ${amount}${description ? `\n📝 ${description}` : ""}\n\n_Aguardamos a confirmação do pagamento_`;
+          try {
+            await api.sendText(chat.jid, msg);
+            onMessageSent();
+            toast.success("Cobrança enviada");
+          } catch { toast.error("Erro ao enviar cobrança"); }
+        }}
       />
     </div>
   );
