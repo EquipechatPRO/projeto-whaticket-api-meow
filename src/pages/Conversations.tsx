@@ -37,9 +37,9 @@ export default function Conversations() {
     api.getMessages(jid).then(setMessages);
   };
 
-  const updateChatStatus = (jid: string, status: string) => {
+  const updateChatStatus = (jid: string, status: Chat["status"]) => {
     setChats((prev) =>
-      prev.map((c) => (c.jid === jid ? { ...c, status } : c))
+      prev.map((c): Chat => (c.jid === jid ? { ...c, status } : c))
     );
   };
 
