@@ -24,6 +24,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
+      <Route path="/plans" element={<Plans />} />
       <Route
         element={
           <ProtectedRoute>
