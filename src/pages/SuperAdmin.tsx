@@ -831,7 +831,7 @@ function ReportsTab({ companies }: { companies: Company[] }) {
   );
 }
 
-
+function LimitRow({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="w-3 h-3" />{label}</span>
