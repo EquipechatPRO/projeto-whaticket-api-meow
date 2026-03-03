@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import api, { Chat, Message, DashboardStats } from "@/services/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useNotifications } from "@/hooks/useNotifications";
+import { toast } from "sonner";
 import {
   Wifi, WifiOff, MessageSquare, Users, Clock, TrendingUp,
   ArrowUpRight, ArrowDownRight, Phone, BarChart3, Activity,
@@ -160,6 +163,40 @@ export default function Dashboard() {
   useEffect(() => {
     loadData(true);
   }, [loadData]);
+
+  // Sound notification
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2LkZuWkIuGgX18fX+EiY2PkI+Oi4mHhYOBgICAgoSGiIqLjI2NjYyLioiHhYSDgoGBgYKDhIaHiImKi4uLi4qJiIeGhYSEg4KCgoKDhIWGh4iIiYmJiYiIh4aFhYSEg4ODg4OEhIWFhoaHh4eHh4eGhoaFhYWEhISDg4OEhIWFhYaGhoaGhoaGhYWFhYSEhISDg4OEhISFhYWFhYWFhYWFhYSEhISDg4OEhISEhYWFhYWFhQ==");
+    audioRef.current = audio;
+  }, []);
+
+  const { notify } = useNotifications();
+  const [newMsgCount, setNewMsgCount] = useState(0);
+
+  useWebSocket({
+    onMessage: (msg) => {
+      if (!msg.fromMe) {
+        setNewMsgCount((c) => c + 1);
+        // Play sound
+        audioRef.current?.play().catch(() => {});
+        // Toast
+        toast.info(`Nova mensagem de ${msg.senderName || "Contato"}`, {
+          description: msg.text?.slice(0, 80) || "Mídia recebida",
+          duration: 4000,
+        });
+        // Push notification
+        notify(`Nova mensagem - ${msg.senderName || "Contato"}`, {
+          body: msg.text?.slice(0, 100) || "Mídia recebida",
+        });
+        // Refresh data
+        loadData(false);
+      }
+    },
+    onStatus: (data) => {
+      setStatus(data);
+    },
+  });
 
   useEffect(() => {
     if (autoRefresh) {
