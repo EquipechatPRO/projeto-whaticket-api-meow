@@ -50,6 +50,8 @@ interface FlowStore {
   updateFlow: (id: string, data: Partial<Flow>) => void;
   deleteFlow: (id: string) => void;
   duplicateFlow: (id: string) => void;
+  exportFlow: (id: string) => string | null;
+  importFlow: (json: string) => Flow | null;
 }
 
 const defaultNodes = [
@@ -138,5 +140,34 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
         },
       ],
     }));
+  },
+  exportFlow: (id) => {
+    const flow = get().flows.find((f) => f.id === id);
+    if (!flow) return null;
+    const { id: _id, createdAt, updatedAt, isActive, connectionId, ...exportData } = flow;
+    return JSON.stringify({ version: 1, ...exportData }, null, 2);
+  },
+  importFlow: (json) => {
+    try {
+      const data = JSON.parse(json);
+      if (!data.name || !data.nodes || !data.edges) return null;
+      const now = new Date().toISOString().split("T")[0];
+      const flow: Flow = {
+        id: `flow-${Date.now()}`,
+        name: data.name,
+        description: data.description || "",
+        trigger: data.trigger || "manual",
+        triggerValue: data.triggerValue,
+        isActive: false,
+        createdAt: now,
+        updatedAt: now,
+        nodes: data.nodes,
+        edges: data.edges,
+      };
+      set((s) => ({ flows: [...s.flows, flow] }));
+      return flow;
+    } catch {
+      return null;
+    }
   },
 }));
