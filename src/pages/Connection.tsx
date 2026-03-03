@@ -827,6 +827,7 @@ export default function Connection() {
               {editTab === "mensagens" && <TabMensagens form={editForm} setForm={setEditForm} />}
               {editTab === "chatbot" && <TabChatbot form={editForm} setForm={setEditForm} />}
               {editTab === "fluxo" && <TabFluxo form={editForm} setForm={setEditForm} />}
+              {editTab === "horarios" && <TabHorarios form={editForm} setForm={setEditForm} />}
             </div>
 
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
