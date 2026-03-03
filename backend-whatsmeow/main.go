@@ -251,14 +251,32 @@ func dbInsertMessage(m StoredMessage) {
 	}
 }
 
-func dbGetMessages(jid string, limit int) []StoredMessage {
-	rows, err := msgDB.Query(`SELECT id, jid, from_me, text, timestamp, type, sender_name, media_url FROM messages WHERE jid = ? ORDER BY timestamp ASC LIMIT ?`, jid, limit)
+type PaginatedMessages struct {
+	Messages []StoredMessage `json:"messages"`
+	Total    int             `json:"total"`
+	Offset   int             `json:"offset"`
+	Limit    int             `json:"limit"`
+}
+
+func dbGetMessagesPaginated(jid string, limit, offset int) PaginatedMessages {
+	var total int
+	err := msgDB.QueryRow(`SELECT COUNT(*) FROM messages WHERE jid = ?`, jid).Scan(&total)
+	if err != nil {
+		log.Printf("DB count error: %v", err)
+		return PaginatedMessages{Messages: []StoredMessage{}, Total: 0, Offset: offset, Limit: limit}
+	}
+	rows, err := msgDB.Query(`SELECT id, jid, from_me, text, timestamp, type, sender_name, media_url FROM messages WHERE jid = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`, jid, limit, offset)
 	if err != nil {
 		log.Printf("DB query error: %v", err)
-		return []StoredMessage{}
+		return PaginatedMessages{Messages: []StoredMessage{}, Total: total, Offset: offset, Limit: limit}
 	}
 	defer rows.Close()
-	return scanMessages(rows)
+	msgs := scanMessages(rows)
+	// Reverse to chronological order
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+	return PaginatedMessages{Messages: msgs, Total: total, Offset: offset, Limit: limit}
 }
 
 func dbGetAllMessages() []StoredMessage {
@@ -626,10 +644,14 @@ func handleGetChats(w http.ResponseWriter, r *http.Request) {
 func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	jid := mux.Vars(r)["jid"]
 	limit := 50
+	offset := 0
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 { limit = v }
 	}
-	result := dbGetMessages(jid, limit)
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v >= 0 { offset = v }
+	}
+	result := dbGetMessagesPaginated(jid, limit, offset)
 	jsonOK(w, result)
 }
 

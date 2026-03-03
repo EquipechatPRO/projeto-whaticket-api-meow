@@ -53,8 +53,8 @@ export const api = {
 
   // Chats / Contatos
   getChats: () => request<Chat[]>("/api/chats"),
-  getMessages: (jid: string, limit?: number) =>
-    request<Message[]>(`/api/messages/${encodeURIComponent(jid)}?limit=${limit || 50}`),
+  getMessages: (jid: string, limit?: number, offset?: number) =>
+    request<PaginatedMessages>(`/api/messages/${encodeURIComponent(jid)}?limit=${limit || 50}&offset=${offset || 0}`),
   getContacts: () => request<Contact[]>("/api/contacts"),
   getContactInfo: (jid: string) => request<Contact>(`/api/contacts/${encodeURIComponent(jid)}`),
   checkNumber: (phone: string) =>
@@ -144,6 +144,13 @@ export interface DashboardStats {
   timestamp: string;
 }
 
+export interface PaginatedMessages {
+  messages: Message[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export interface Group {
   jid: string;
   name: string;
@@ -176,7 +183,13 @@ async function mockResponse<T>(endpoint: string, options: RequestInit = {}): Pro
   if (endpoint === "/api/qrcode") return { qrcode: "MOCK_QR_" + Date.now(), status: "waiting_scan" } as T;
   if (endpoint === "/api/status") return { connected: true, phone: "+55 11 99988-7766", name: "Empresa XYZ" } as T;
   if (endpoint === "/api/chats") return MOCK_CHATS as T;
-  if (endpoint.startsWith("/api/messages/")) return MOCK_MESSAGES as T;
+  if (endpoint.startsWith("/api/messages/")) {
+    const url = new URL("http://localhost" + endpoint);
+    const limit = parseInt(url.searchParams.get("limit") || "50");
+    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const paginated = MOCK_MESSAGES.slice(offset, offset + limit);
+    return { messages: paginated, total: MOCK_MESSAGES.length, offset, limit } as T;
+  }
   if (endpoint === "/api/contacts") return MOCK_CHATS.filter(c => !c.isGroup).map(c => ({ jid: c.jid, name: c.name, pushName: c.name, phone: c.jid.replace("@s.whatsapp.net", "") })) as T;
   if (endpoint === "/api/groups") return MOCK_CHATS.filter(c => c.isGroup).map(c => ({ jid: c.jid, name: c.name, description: "Grupo de trabalho", participants: [] })) as T;
   if (endpoint.includes("/api/send/")) return { id: "mock_" + Date.now() } as T;
