@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type FlowNodeType = "start" | "message" | "menu" | "queue" | "condition" | "collect" | "end";
+export type FlowNodeType = "start" | "message" | "menu" | "queue" | "condition" | "collect" | "transfer" | "wait" | "end";
 
 export interface FlowNodeData {
   label: string;
@@ -19,6 +19,15 @@ export interface FlowNodeData {
   collectField?: string;
   collectPrompt?: string;
   collectVariable?: string;
+  // Transfer node
+  transferTo?: "agent" | "queue";
+  transferQueueId?: string;
+  transferMessage?: string;
+  // Wait node
+  waitTimeout?: number;
+  waitUnit?: "seconds" | "minutes" | "hours";
+  waitTimeoutAction?: "end" | "message" | "transfer";
+  waitTimeoutMessage?: string;
 }
 
 export interface Flow {

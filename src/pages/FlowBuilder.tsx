@@ -15,11 +15,11 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   ArrowLeft, Save, Play, Plus, MessageSquare, List,
-  ArrowRightToLine, GitBranch, FileInput, StopCircle, Trash2,
+  ArrowRightToLine, GitBranch, FileInput, StopCircle, Trash2, UserCheck, Timer,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFlowStore, type FlowNodeData, type FlowNodeType } from "@/stores/flow-store";
-import { StartNode, MessageNode, MenuNode, QueueNode, ConditionNode, CollectNode, EndNode } from "@/components/flow/FlowNodes";
+import { StartNode, MessageNode, MenuNode, QueueNode, ConditionNode, CollectNode, TransferNode, WaitNode, EndNode } from "@/components/flow/FlowNodes";
 import NodeConfigPanel from "@/components/flow/NodeConfigPanel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,8 @@ const nodeTypes = {
   queueNode: QueueNode,
   conditionNode: ConditionNode,
   collectNode: CollectNode,
+  transferNode: TransferNode,
+  waitNode: WaitNode,
   endNode: EndNode,
 };
 
@@ -40,6 +42,8 @@ const NODE_PALETTE: { type: string; nodeType: FlowNodeType; label: string; icon:
   { type: "queueNode", nodeType: "queue", label: "Fila", icon: ArrowRightToLine, color: "text-green-600 bg-green-500/10" },
   { type: "conditionNode", nodeType: "condition", label: "Condição", icon: GitBranch, color: "text-purple-500 bg-purple-500/10" },
   { type: "collectNode", nodeType: "collect", label: "Coletar", icon: FileInput, color: "text-cyan-600 bg-cyan-500/10" },
+  { type: "transferNode", nodeType: "transfer", label: "Transferir", icon: UserCheck, color: "text-orange-600 bg-orange-500/10" },
+  { type: "waitNode", nodeType: "wait", label: "Espera", icon: Timer, color: "text-rose-600 bg-rose-500/10" },
   { type: "endNode", nodeType: "end", label: "Fim", icon: StopCircle, color: "text-muted-foreground bg-muted" },
 ];
 
@@ -68,6 +72,8 @@ export default function FlowBuilder() {
         type: nodeType,
         ...(nodeType === "menu" ? { menuOptions: [{ id: `opt-${Date.now()}`, label: "Opção 1" }] } : {}),
         ...(nodeType === "condition" ? { conditionType: "keyword" } : {}),
+        ...(nodeType === "transfer" ? { transferTo: "agent" } : {}),
+        ...(nodeType === "wait" ? { waitTimeout: 30, waitUnit: "seconds", waitTimeoutAction: "end" } : {}),
       } as FlowNodeData,
     };
     setNodes((nds) => [...nds, newNode]);
@@ -185,7 +191,7 @@ export default function FlowBuilder() {
         </div>
 
         {/* Config Panel */}
-        {selectedNode && selectedNode.data.type !== "start" && selectedNode.data.type !== "end" && (
+        {selectedNode && !["start", "end"].includes(selectedNode.data.type) && (
           <NodeConfigPanel
             node={selectedNode}
             onUpdate={updateNodeData}
