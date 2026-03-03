@@ -352,7 +352,21 @@ export default function Dashboard() {
           )}
         </ChartCard>
 
-        <ChartCard title="Grupos vs Individuais" subtitle="Tipos de conversa">
+        <ChartCard title="Volume Diário" subtitle={`Últimos ${dailyVolume.length} dias • do servidor`}>
+          {dailyVolume.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={dailyVolume} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="enviadas" fill="hsl(142, 72%, 29%)" radius={[4, 4, 0, 0]} name="Enviadas" />
+                <Bar dataKey="recebidas" fill="hsl(210, 80%, 55%)" radius={[4, 4, 0, 0]} name="Recebidas" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-10">Sem dados diários</p>
+          )}
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
