@@ -81,6 +81,10 @@ export const api = {
   // Estatísticas
   getStats: () => request<DashboardStats>("/api/stats"),
 
+  // Busca full-text
+  searchMessages: (q: string, jid?: string, limit?: number) =>
+    request<Message[]>(`/api/search?q=${encodeURIComponent(q)}${jid ? `&jid=${encodeURIComponent(jid)}` : ''}&limit=${limit || 50}`),
+
   // Filas de atendimento (gerenciado no frontend)
   transferChat: (jid: string, toUser: string) =>
     request<{ success: boolean }>("/api/transfer", { method: "POST", body: JSON.stringify({ jid, to_user: toUser }) }),
@@ -176,6 +180,13 @@ async function mockResponse<T>(endpoint: string, options: RequestInit = {}): Pro
   if (endpoint === "/api/contacts") return MOCK_CHATS.filter(c => !c.isGroup).map(c => ({ jid: c.jid, name: c.name, pushName: c.name, phone: c.jid.replace("@s.whatsapp.net", "") })) as T;
   if (endpoint === "/api/groups") return MOCK_CHATS.filter(c => c.isGroup).map(c => ({ jid: c.jid, name: c.name, description: "Grupo de trabalho", participants: [] })) as T;
   if (endpoint.includes("/api/send/")) return { id: "mock_" + Date.now() } as T;
+  if (endpoint.startsWith("/api/search")) {
+    const url = new URL("http://localhost" + endpoint);
+    const q = (url.searchParams.get("q") || "").toLowerCase();
+    if (!q) return [] as T;
+    const results = MOCK_MESSAGES.filter(m => m.text.toLowerCase().includes(q) || (m.senderName || "").toLowerCase().includes(q));
+    return results as T;
+  }
   if (endpoint === "/api/stats") {
     const hourly = Array.from({ length: 24 }, (_, i) => ({
       hour: `${String(i).padStart(2, "0")}h`,
