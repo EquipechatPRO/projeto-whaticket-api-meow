@@ -4,6 +4,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 import NewChatModal from "@/components/NewChatModal";
+import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -23,6 +24,7 @@ type MainTab = "inbox" | "paused" | "resolved" | "search";
 type SubTab = "attending" | "waiting" | "bot" | "groups";
 
 export default function Conversations() {
+  const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedJid, setSelectedJid] = useState<string | null>(null);
@@ -69,6 +71,10 @@ export default function Conversations() {
       });
       if (!msg.fromMe && selectedJid !== msg.jid) {
         toast.info(`Nova mensagem de ${msg.senderName || msg.jid}`);
+        notify(`Nova mensagem de ${msg.senderName || msg.jid}`, {
+          body: msg.text?.slice(0, 100) || "Nova mensagem",
+          tag: msg.jid,
+        });
       }
     }, [selectedJid]),
     onTyping: useCallback((data: { jid: string; from: string; state: string }) => {
