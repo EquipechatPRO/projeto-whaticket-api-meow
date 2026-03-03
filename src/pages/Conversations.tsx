@@ -400,7 +400,7 @@ export default function Conversations() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 border border-border rounded-xl overflow-hidden bg-card">
+      <div className="flex-1 overflow-hidden bg-card">
         {selectedChat ? (
           <ChatWindow
             chat={selectedChat}
