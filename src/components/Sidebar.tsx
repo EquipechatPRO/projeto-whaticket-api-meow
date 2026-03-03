@@ -15,6 +15,7 @@ const links = [
   { to: "/contacts", icon: Users, label: "Contatos" },
   { to: "/queues", icon: ListOrdered, label: "Filas" },
   { to: "/connection", icon: Wifi, label: "Conexão" },
+  { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
 export default function Sidebar() {
@@ -42,14 +43,7 @@ export default function Sidebar() {
         </NavLink>
       ))}
 
-      <div className="mt-auto">
-        <button
-          className="w-12 h-12 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent transition-colors"
-          title="Configurações"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
-      </div>
+      <div className="mt-auto" />
     </aside>
   );
 }
