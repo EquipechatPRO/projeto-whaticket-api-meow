@@ -95,7 +95,7 @@ export interface Chat {
   isGroup: boolean;
   avatar?: string;
   tags?: string[];
-  status?: "attending" | "waiting" | "closed";
+  status?: "attending" | "waiting" | "closed" | "paused" | "resolved";
   assignedTo?: string;
   queue?: string;
 }
