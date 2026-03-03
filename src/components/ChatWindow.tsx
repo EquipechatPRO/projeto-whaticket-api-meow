@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
+import ContactPanel from "@/components/ContactPanel";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
