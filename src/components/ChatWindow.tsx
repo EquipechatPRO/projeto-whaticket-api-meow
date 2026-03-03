@@ -84,6 +84,7 @@ export default function ChatWindow({
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [docPreview, setDocPreview] = useState<{ file: File; name: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
