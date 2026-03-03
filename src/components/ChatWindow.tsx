@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Chat, Message, api } from "@/services/api";
 import ContactPanel from "@/components/ContactPanel";
 import { QuickReplyList, QuickReply } from "@/components/QuickReplies";
@@ -56,6 +56,9 @@ interface Props {
   onTransfer?: (jid: string) => void;
   onDelete?: (jid: string) => void;
   onBack?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 type ConfirmAction = "return" | "pause" | "finish" | "transfer" | "delete" | null;
@@ -70,6 +73,9 @@ export default function ChatWindow({
   onTransfer,
   onDelete,
   onBack,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -99,10 +105,37 @@ export default function ChatWindow({
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [stickerInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
   const bottomRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLenRef = useRef(0);
 
+  // Scroll to bottom only on new messages (not when loading older)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > prevMessagesLenRef.current) {
+      const addedAtTop = prevMessagesLenRef.current > 0 && messages.length - prevMessagesLenRef.current > 1;
+      if (!addedAtTop) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+    prevMessagesLenRef.current = messages.length;
   }, [messages]);
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    if (!hasMore || !onLoadMore) return;
+    const sentinel = topSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore) {
+          onLoadMore();
+        }
+      },
+      { root: scrollContainerRef.current, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore]);
 
   // Cleanup recording on unmount
   useEffect(() => {
@@ -452,7 +485,14 @@ export default function ChatWindow({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-chat-bg scrollbar-thin">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-1 bg-chat-bg scrollbar-thin">
+        {/* Sentinel for infinite scroll */}
+        <div ref={topSentinelRef} className="h-1" />
+        {loadingMore && (
+          <div className="flex justify-center py-3">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         {groupedMessages.map((group) => (
           <div key={group.date}>
             <div className="flex items-center justify-center my-3">

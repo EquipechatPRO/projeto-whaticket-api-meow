@@ -113,10 +113,27 @@ export default function Conversations() {
     api.getChats().then(setChats);
   }, []);
 
+  const PAGE_SIZE = 50;
+
   const loadMessages = (jid: string) => {
     setSelectedJid(jid);
-    api.getMessages(jid).then((res) => setMessages(res.messages));
+    api.getMessages(jid, PAGE_SIZE, 0).then((res) => {
+      setMessages(res.messages);
+      setTotalMessages(res.total);
+    });
   };
+
+  const loadOlderMessages = useCallback(() => {
+    if (!selectedJid || loadingMore) return;
+    const currentCount = messages.length;
+    if (currentCount >= totalMessages) return;
+    setLoadingMore(true);
+    // offset from the end (we fetch newest-first then reverse in backend)
+    api.getMessages(selectedJid, PAGE_SIZE, currentCount).then((res) => {
+      setMessages((prev) => [...res.messages, ...prev]);
+      setTotalMessages(res.total);
+    }).finally(() => setLoadingMore(false));
+  }, [selectedJid, messages.length, totalMessages, loadingMore]);
 
   // Full-text search with debounce
   useEffect(() => {
@@ -392,6 +409,9 @@ export default function Conversations() {
             onTransfer={handleTransfer}
             onDelete={handleDelete}
             onBack={handleBack}
+            hasMore={messages.length < totalMessages}
+            loadingMore={loadingMore}
+            onLoadMore={loadOlderMessages}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-chat-bg">
