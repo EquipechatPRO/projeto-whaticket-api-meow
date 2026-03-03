@@ -367,22 +367,6 @@ export default function Dashboard() {
           ) : (
             <p className="text-xs text-muted-foreground text-center py-10">Sem dados diários</p>
           )}
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={[
-                  { name: "Individuais", value: chats.filter((c) => !c.isGroup).length },
-                  { name: "Grupos", value: chats.filter((c) => c.isGroup).length },
-                ]}
-                cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value"
-              >
-                <Cell fill="hsl(210, 80%, 55%)" />
-                <Cell fill="hsl(142, 72%, 29%)" />
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
         </ChartCard>
       </div>
 
