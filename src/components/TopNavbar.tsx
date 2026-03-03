@@ -62,9 +62,6 @@ export default function TopNavbar() {
       ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
       : []),
     { to: "/connection", icon: Settings, label: t("nav.connection") },
-    ...(isSuperAdmin
-      ? [{ to: "/admin", icon: Building2, label: "Master Admin" }]
-      : []),
   ];
 
   const handleLogout = () => {
@@ -327,6 +324,11 @@ export default function TopNavbar() {
               <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors">
                 <HelpCircle className="w-3.5 h-3.5" /> Ajuda
               </button>
+              {isSuperAdmin && (
+                <button onClick={() => { navigate("/admin"); setShowHamburger(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-primary font-semibold hover:bg-primary/10 transition-colors">
+                  <Building2 className="w-3.5 h-3.5" /> Master Admin
+                </button>
+              )}
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   onClick={() => { handleLogout(); setShowHamburger(false); }}
