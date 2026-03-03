@@ -699,7 +699,10 @@ export default function ChatWindow({
                     Evento
                   </button>
                   <button
-                    onClick={() => { setShowAttachMenu(false); toast.info("Figurinhas em breve"); }}
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      toast.info("Envie uma imagem para converter em figurinha. Funcionalidade requer backend real.");
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <Sticker className="w-4 h-4 text-teal-500" />
