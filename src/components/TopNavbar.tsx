@@ -76,6 +76,18 @@ export default function TopNavbar() {
 
       {/* Right Icons */}
       <div className="flex items-center gap-1 ml-3 shrink-0">
+        <div
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold mr-1",
+            wsConnected
+              ? "bg-green-500/10 text-green-500"
+              : "bg-destructive/10 text-destructive"
+          )}
+          title={wsConnected ? "WebSocket conectado" : "WebSocket desconectado"}
+        >
+          <span className={cn("w-2 h-2 rounded-full", wsConnected ? "bg-green-500 animate-pulse" : "bg-destructive")} />
+          <span className="hidden sm:inline">{wsConnected ? "Online" : "Offline"}</span>
+        </div>
         <button className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground transition-colors">
           <Bell className="w-4 h-4" />
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
