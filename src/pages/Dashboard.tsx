@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import api from "@/services/api";
+import api, { Chat, Message } from "@/services/api";
 import {
   Wifi, WifiOff, MessageSquare, Users, Clock, TrendingUp,
   ArrowUpRight, ArrowDownRight, Phone, BarChart3, Activity,
-  CheckCircle2, PauseCircle, AlertCircle, Filter,
+  CheckCircle2, PauseCircle, AlertCircle, Filter, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -13,58 +13,77 @@ import {
   Legend, LineChart, Line,
 } from "recharts";
 
-// ── Mock data for Power BI-style charts ──
-
-const hourlyMessages = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${String(i).padStart(2, "0")}h`,
-  enviadas: Math.floor(Math.random() * 80 + (i > 7 && i < 20 ? 40 : 5)),
-  recebidas: Math.floor(Math.random() * 100 + (i > 7 && i < 20 ? 60 : 8)),
-}));
-
-const weeklyData = [
-  { day: "Seg", atendimentos: 124, resolvidos: 98, tempo: 4.2 },
-  { day: "Ter", atendimentos: 156, resolvidos: 132, tempo: 3.8 },
-  { day: "Qua", atendimentos: 189, resolvidos: 165, tempo: 3.5 },
-  { day: "Qui", atendimentos: 142, resolvidos: 120, tempo: 4.1 },
-  { day: "Sex", atendimentos: 198, resolvidos: 178, tempo: 3.2 },
-  { day: "Sáb", atendimentos: 67, resolvidos: 60, tempo: 2.8 },
-  { day: "Dom", atendimentos: 34, resolvidos: 30, tempo: 2.5 },
-];
-
-const agentPerformance = [
-  { name: "Carlos S.", atendimentos: 45, resolvidos: 42, satisfacao: 94 },
-  { name: "Ana P.", atendimentos: 38, resolvidos: 35, satisfacao: 97 },
-  { name: "Pedro L.", atendimentos: 52, resolvidos: 48, satisfacao: 91 },
-  { name: "Maria F.", atendimentos: 41, resolvidos: 39, satisfacao: 96 },
-  { name: "João R.", atendimentos: 33, resolvidos: 30, satisfacao: 89 },
-];
-
-const statusDistribution = [
-  { name: "Em atendimento", value: 23, color: "hsl(142, 72%, 29%)" },
-  { name: "Aguardando", value: 15, color: "hsl(38, 92%, 50%)" },
-  { name: "Resolvidos", value: 89, color: "hsl(210, 80%, 55%)" },
-  { name: "Pausados", value: 8, color: "hsl(210, 10%, 55%)" },
-];
-
-const channelData = [
-  { name: "WhatsApp", value: 78 },
-  { name: "Telegram", value: 12 },
-  { name: "Webchat", value: 10 },
-];
-
-const satisfactionTrend = Array.from({ length: 14 }, (_, i) => ({
-  date: `${i + 1}/03`,
-  score: Math.floor(Math.random() * 10 + 85),
-  nps: Math.floor(Math.random() * 15 + 60),
-}));
-
 // ── Helpers ──
 
+function groupMessagesByHour(messages: Message[]) {
+  const hours: Record<string, { enviadas: number; recebidas: number }> = {};
+  for (let i = 0; i < 24; i++) {
+    hours[String(i).padStart(2, "0")] = { enviadas: 0, recebidas: 0 };
+  }
+  messages.forEach((m) => {
+    const h = new Date(m.timestamp).getHours();
+    const key = String(h).padStart(2, "0");
+    if (hours[key]) {
+      if (m.fromMe) hours[key].enviadas++;
+      else hours[key].recebidas++;
+    }
+  });
+  return Object.entries(hours).map(([hour, data]) => ({ hour: `${hour}h`, ...data }));
+}
+
+function getStatusDistribution(chats: Chat[]) {
+  const counts = { attending: 0, waiting: 0, resolved: 0, paused: 0, closed: 0, other: 0 };
+  chats.forEach((c) => {
+    if (c.status === "attending") counts.attending++;
+    else if (c.status === "waiting") counts.waiting++;
+    else if (c.status === "resolved") counts.resolved++;
+    else if (c.status === "paused") counts.paused++;
+    else if (c.status === "closed") counts.closed++;
+    else counts.other++;
+  });
+  return [
+    { name: "Em atendimento", value: counts.attending, color: "hsl(142, 72%, 29%)" },
+    { name: "Aguardando", value: counts.waiting, color: "hsl(38, 92%, 50%)" },
+    { name: "Resolvidos", value: counts.resolved + counts.closed, color: "hsl(210, 80%, 55%)" },
+    { name: "Pausados", value: counts.paused, color: "hsl(210, 10%, 55%)" },
+  ].filter((s) => s.value > 0);
+}
+
+function getAgentPerformance(chats: Chat[]) {
+  const agents: Record<string, { atendimentos: number; resolvidos: number }> = {};
+  chats.forEach((c) => {
+    const name = c.assignedTo || "Não atribuído";
+    if (!agents[name]) agents[name] = { atendimentos: 0, resolvidos: 0 };
+    agents[name].atendimentos++;
+    if (c.status === "resolved" || c.status === "closed") agents[name].resolvidos++;
+  });
+  return Object.entries(agents)
+    .map(([name, data]) => ({
+      name,
+      atendimentos: data.atendimentos,
+      resolvidos: data.resolvidos,
+      satisfacao: data.atendimentos > 0 ? Math.round((data.resolvidos / data.atendimentos) * 100) : 0,
+    }))
+    .sort((a, b) => b.atendimentos - a.atendimentos)
+    .slice(0, 10);
+}
+
+function getQueueDistribution(chats: Chat[]) {
+  const queues: Record<string, number> = {};
+  chats.forEach((c) => {
+    const q = c.queue || "Sem fila";
+    queues[q] = (queues[q] || 0) + 1;
+  });
+  return Object.entries(queues).map(([name, value]) => ({ name, value }));
+}
+
+// ── UI Components ──
+
 const KPICard = ({
-  title, value, subtitle, icon: Icon, trend, trendValue, color, onClick,
+  title, value, subtitle, icon: Icon, trend, trendValue, color, onClick, loading,
 }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType;
-  trend?: "up" | "down"; trendValue?: string; color: string; onClick?: () => void;
+  trend?: "up" | "down"; trendValue?: string; color: string; onClick?: () => void; loading?: boolean;
 }) => (
   <button onClick={onClick} className="bg-card border border-border rounded-xl p-4 text-left hover:shadow-md transition-all group w-full">
     <div className="flex items-start justify-between mb-2">
@@ -81,7 +100,11 @@ const KPICard = ({
       )}
     </div>
     <p className="text-xs text-muted-foreground">{title}</p>
-    <p className="text-2xl font-bold text-foreground mt-0.5">{value}</p>
+    {loading ? (
+      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-1" />
+    ) : (
+      <p className="text-2xl font-bold text-foreground mt-0.5">{value}</p>
+    )}
     {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
   </button>
 );
@@ -95,9 +118,6 @@ const ChartCard = ({ title, subtitle, children, className }: {
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
       </div>
-      <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground">
-        <Filter className="w-3.5 h-3.5" />
-      </button>
     </div>
     {children}
   </div>
@@ -123,18 +143,52 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<{ connected: boolean; phone?: string; name?: string } | null>(null);
-  const [chatCount, setChatCount] = useState(0);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
 
   useEffect(() => {
-    api.getStatus().then(setStatus).catch(() => setStatus({ connected: false }));
-    api.getChats().then((c) => setChatCount(c.length)).catch(() => {});
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [statusRes, chatsRes] = await Promise.all([
+          api.getStatus().catch(() => ({ connected: false, phone: "", name: "" })),
+          api.getChats().catch(() => [] as Chat[]),
+        ]);
+        setStatus(statusRes);
+        setChats(chatsRes);
+
+        // Fetch messages for each chat in parallel (limited to first 20 chats)
+        const chatSlice = chatsRes.slice(0, 20);
+        const msgResults = await Promise.all(
+          chatSlice.map((c) => api.getMessages(c.jid, 100).catch(() => [] as Message[]))
+        );
+        setAllMessages(msgResults.flat());
+      } catch (e) {
+        console.error("Dashboard load error:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
-  const totalMessages = useMemo(() =>
-    hourlyMessages.reduce((a, b) => a + b.enviadas + b.recebidas, 0), []);
-  const avgResponseTime = "3m 24s";
-  const satisfactionScore = "94%";
+  // Derived data
+  const hourlyMessages = useMemo(() => groupMessagesByHour(allMessages), [allMessages]);
+  const statusDist = useMemo(() => getStatusDistribution(chats), [chats]);
+  const agentPerf = useMemo(() => getAgentPerformance(chats), [chats]);
+  const queueDist = useMemo(() => getQueueDistribution(chats), [chats]);
+
+  const totalMessages = allMessages.length;
+  const sentMessages = allMessages.filter((m) => m.fromMe).length;
+  const receivedMessages = totalMessages - sentMessages;
+  const activeChats = chats.filter((c) => c.status === "attending").length;
+  const waitingChats = chats.filter((c) => c.status === "waiting").length;
+  const resolvedChats = chats.filter((c) => c.status === "resolved" || c.status === "closed").length;
+  const totalUnread = chats.reduce((a, c) => a + c.unreadCount, 0);
+
+  const queueColors = ["hsl(210, 80%, 55%)", "hsl(142, 72%, 29%)", "hsl(38, 92%, 50%)", "hsl(280, 60%, 55%)", "hsl(0, 70%, 55%)"];
 
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4 bg-background">
@@ -142,21 +196,17 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-xs text-muted-foreground">Visão geral do atendimento em tempo real</p>
+          <p className="text-xs text-muted-foreground">
+            Dados em tempo real da API • {chats.length} conversas carregadas
+          </p>
         </div>
-        <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5">
-          {(["today", "week", "month"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {p === "today" ? "Hoje" : p === "week" ? "Semana" : "Mês"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Atualizar
+          </button>
         </div>
       </div>
 
@@ -169,43 +219,46 @@ export default function Dashboard() {
           icon={status?.connected ? Wifi : WifiOff}
           color={status?.connected ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}
           onClick={() => navigate("/connection")}
+          loading={loading}
         />
         <KPICard
           title="Conversas Ativas"
-          value={String(chatCount || 135)}
-          trend="up" trendValue="+12%"
+          value={String(activeChats)}
+          subtitle={`${waitingChats} aguardando`}
           icon={MessageSquare}
-          color="bg-info/10 text-info"
+          color="bg-blue-500/10 text-blue-500"
           onClick={() => navigate("/conversations")}
+          loading={loading}
         />
         <KPICard
-          title="Mensagens Hoje"
+          title="Mensagens"
           value={totalMessages.toLocaleString("pt-BR")}
-          trend="up" trendValue="+8%"
+          subtitle={`${sentMessages} env. / ${receivedMessages} rec.`}
           icon={Activity}
           color="bg-primary/10 text-primary"
+          loading={loading}
         />
         <KPICard
-          title="Tempo Médio"
-          value={avgResponseTime}
-          trend="down" trendValue="-15%"
-          subtitle="de resposta"
-          icon={Clock}
+          title="Não Lidas"
+          value={String(totalUnread)}
+          subtitle="mensagens pendentes"
+          icon={AlertCircle}
           color="bg-warning/10 text-warning"
+          loading={loading}
         />
         <KPICard
-          title="Satisfação"
-          value={satisfactionScore}
-          trend="up" trendValue="+3%"
-          subtitle="CSAT"
-          icon={TrendingUp}
+          title="Resolvidos"
+          value={String(resolvedChats)}
+          subtitle={`de ${chats.length} conversas`}
+          icon={CheckCircle2}
           color="bg-primary/10 text-primary"
+          loading={loading}
         />
       </div>
 
       {/* Row 1: Area + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <ChartCard title="Volume de Mensagens" subtitle="Enviadas vs Recebidas por hora" className="lg:col-span-2">
+        <ChartCard title="Volume de Mensagens" subtitle={`${totalMessages} mensagens • Enviadas vs Recebidas por hora`} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={hourlyMessages}>
               <defs>
@@ -228,128 +281,137 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Status das Conversas" subtitle="Distribuição atual">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={statusDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
-                {statusDistribution.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+        <ChartCard title="Status das Conversas" subtitle={`${chats.length} conversas totais`}>
+          {statusDist.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={statusDist} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
+                    {statusDist.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-1.5 mt-2">
+                {statusDist.map((s) => (
+                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                    {s.name}: <span className="font-semibold text-foreground">{s.value}</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-1.5 mt-2">
-            {statusDistribution.map((s) => (
-              <div key={s.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-                {s.name}: <span className="font-semibold text-foreground">{s.value}</span>
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-10">Sem dados de status</p>
+          )}
         </ChartCard>
       </div>
 
-      {/* Row 2: Bar + Line */}
+      {/* Row 2: Queue distribution + messages by chat */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Atendimentos por Dia" subtitle="Abertos vs Resolvidos na semana">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={weeklyData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
-              <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="atendimentos" fill="hsl(210, 80%, 55%)" radius={[4, 4, 0, 0]} name="Abertos" />
-              <Bar dataKey="resolvidos" fill="hsl(142, 72%, 29%)" radius={[4, 4, 0, 0]} name="Resolvidos" />
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Distribuição por Fila" subtitle="Conversas por fila de atendimento">
+          {queueDist.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={queueDist} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" name="Conversas" radius={[4, 4, 0, 0]}>
+                  {queueDist.map((_, i) => (
+                    <Cell key={i} fill={queueColors[i % queueColors.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-10">Sem dados de filas</p>
+          )}
         </ChartCard>
 
-        <ChartCard title="Satisfação & NPS" subtitle="Últimos 14 dias">
+        <ChartCard title="Grupos vs Individuais" subtitle="Tipos de conversa">
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={satisfactionTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" domain={[50, 100]} />
+            <PieChart>
+              <Pie
+                data={[
+                  { name: "Individuais", value: chats.filter((c) => !c.isGroup).length },
+                  { name: "Grupos", value: chats.filter((c) => c.isGroup).length },
+                ]}
+                cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value"
+              >
+                <Cell fill="hsl(210, 80%, 55%)" />
+                <Cell fill="hsl(142, 72%, 29%)" />
+              </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="score" stroke="hsl(142, 72%, 29%)" strokeWidth={2} dot={{ r: 3 }} name="CSAT %" />
-              <Line type="monotone" dataKey="nps" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} name="NPS" />
-            </LineChart>
+              <Legend />
+            </PieChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
 
       {/* Row 3: Agent Table + Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <ChartCard title="Desempenho por Atendente" subtitle="Ranking do período" className="lg:col-span-2">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-[11px] font-medium text-muted-foreground pb-2 pr-4">Atendente</th>
-                  <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Atendimentos</th>
-                  <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Resolvidos</th>
-                  <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Taxa</th>
-                  <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">CSAT</th>
-                  <th className="text-left text-[11px] font-medium text-muted-foreground pb-2 pl-2">Performance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentPerformance.map((agent, i) => {
-                  const rate = Math.round((agent.resolvidos / agent.atendimentos) * 100);
-                  return (
-                    <tr key={agent.name} className="border-b border-border last:border-0">
-                      <td className="py-2.5 pr-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                            {i + 1}
+        <ChartCard title="Desempenho por Atendente" subtitle="Baseado nos chats atribuídos" className="lg:col-span-2">
+          {agentPerf.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-[11px] font-medium text-muted-foreground pb-2 pr-4">Atendente</th>
+                    <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Atendimentos</th>
+                    <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Resolvidos</th>
+                    <th className="text-center text-[11px] font-medium text-muted-foreground pb-2 px-2">Taxa</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground pb-2 pl-2">Performance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentPerf.map((agent, i) => {
+                    const rate = agent.atendimentos > 0 ? Math.round((agent.resolvidos / agent.atendimentos) * 100) : 0;
+                    return (
+                      <tr key={agent.name} className="border-b border-border last:border-0">
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              {i + 1}
+                            </div>
+                            <span className="text-sm font-medium text-foreground">{agent.name}</span>
                           </div>
-                          <span className="text-sm font-medium text-foreground">{agent.name}</span>
-                        </div>
-                      </td>
-                      <td className="text-center text-sm text-foreground py-2.5">{agent.atendimentos}</td>
-                      <td className="text-center text-sm text-foreground py-2.5">{agent.resolvidos}</td>
-                      <td className="text-center py-2.5">
-                        <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-md",
-                          rate >= 90 ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"
-                        )}>{rate}%</span>
-                      </td>
-                      <td className="text-center text-sm font-semibold text-foreground py-2.5">{agent.satisfacao}%</td>
-                      <td className="pl-2 py-2.5">
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="h-2 rounded-full bg-primary transition-all"
-                            style={{ width: `${rate}%` }}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="text-center text-sm text-foreground py-2.5">{agent.atendimentos}</td>
+                        <td className="text-center text-sm text-foreground py-2.5">{agent.resolvidos}</td>
+                        <td className="text-center py-2.5">
+                          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-md",
+                            rate >= 90 ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"
+                          )}>{rate}%</span>
+                        </td>
+                        <td className="pl-2 py-2.5">
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${rate}%` }} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-10">Nenhum atendente com chats atribuídos</p>
+          )}
         </ChartCard>
 
         <div className="space-y-4">
-          <ChartCard title="Tempo Médio por Dia" subtitle="Minutos de resposta">
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={weeklyData}>
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="tempo" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="Tempo (min)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
           <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Resumo Rápido</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Resumo em Tempo Real</h3>
             <div className="space-y-3">
               {[
-                { icon: CheckCircle2, label: "Resolvidos hoje", value: "89", color: "text-primary" },
-                { icon: PauseCircle, label: "Em espera", value: "15", color: "text-warning" },
-                { icon: AlertCircle, label: "SLA violado", value: "3", color: "text-destructive" },
-                { icon: Phone, label: "Chamadas ativas", value: "2", color: "text-info" },
+                { icon: CheckCircle2, label: "Resolvidos", value: String(resolvedChats), color: "text-primary" },
+                { icon: PauseCircle, label: "Aguardando", value: String(waitingChats), color: "text-warning" },
+                { icon: AlertCircle, label: "Não lidas", value: String(totalUnread), color: "text-destructive" },
+                { icon: Users, label: "Grupos", value: String(chats.filter((c) => c.isGroup).length), color: "text-blue-500" },
+                { icon: MessageSquare, label: "Total mensagens", value: String(totalMessages), color: "text-primary" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
