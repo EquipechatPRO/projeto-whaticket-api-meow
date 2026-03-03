@@ -11,6 +11,7 @@ import {
   Moon,
   Menu,
   MessageCircle,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -21,6 +22,7 @@ const navLinks = [
   { to: "/conversations", icon: MessageSquare, label: "Atendimentos" },
   { to: "/contacts", icon: Bot, label: "Contatos" },
   { to: "/queues", icon: Shield, label: "Filas" },
+  { to: "/quick-replies", icon: Zap, label: "Respostas" },
   { to: "/connection", icon: Settings, label: "Configurações" },
 ];
 
