@@ -220,7 +220,25 @@ func initMessageDB() {
 	if err != nil {
 		log.Printf("Index creation warning: %v", err)
 	}
-	log.Println("✅ Messages DB initialized (SQLite)")
+	// FTS5 virtual table for full-text search
+	_, err = msgDB.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(id UNINDEXED, jid UNINDEXED, text, sender_name, content=messages, content_rowid=rowid)`)
+	if err != nil {
+		log.Printf("FTS5 creation warning: %v", err)
+	}
+	// Triggers to keep FTS index in sync
+	msgDB.Exec(`CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
+		INSERT INTO messages_fts(rowid, id, jid, text, sender_name) VALUES (new.rowid, new.id, new.jid, new.text, new.sender_name);
+	END`)
+	msgDB.Exec(`CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
+		INSERT INTO messages_fts(messages_fts, rowid, id, jid, text, sender_name) VALUES ('delete', old.rowid, old.id, old.jid, old.text, old.sender_name);
+	END`)
+	msgDB.Exec(`CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
+		INSERT INTO messages_fts(messages_fts, rowid, id, jid, text, sender_name) VALUES ('delete', old.rowid, old.id, old.jid, old.text, old.sender_name);
+		INSERT INTO messages_fts(rowid, id, jid, text, sender_name) VALUES (new.rowid, new.id, new.jid, new.text, new.sender_name);
+	END`)
+	// Rebuild FTS index from existing data
+	msgDB.Exec(`INSERT INTO messages_fts(messages_fts) VALUES ('rebuild')`)
+	log.Println("✅ Messages DB initialized (SQLite + FTS5)")
 }
 
 func dbInsertMessage(m StoredMessage) {
@@ -347,6 +365,9 @@ func main() {
 
 	// Estatísticas
 	r.HandleFunc("/api/stats", handleStats).Methods("GET")
+
+	// Busca full-text
+	r.HandleFunc("/api/search", handleSearch).Methods("GET")
 
 	// Filas
 	r.HandleFunc("/api/transfer", handleTransfer).Methods("POST")
@@ -878,6 +899,46 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, stats)
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		jsonOK(w, []StoredMessage{})
+		return
+	}
+	jidFilter := r.URL.Query().Get("jid")
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 200 {
+			limit = v
+		}
+	}
+
+	// Escape FTS5 special chars and add prefix matching
+	safeQ := q + "*"
+
+	var rows *sql.Rows
+	var err error
+	if jidFilter != "" {
+		rows, err = msgDB.Query(`SELECT m.id, m.jid, m.from_me, m.text, m.timestamp, m.type, m.sender_name, m.media_url
+			FROM messages m JOIN messages_fts f ON m.rowid = f.rowid
+			WHERE messages_fts MATCH ? AND m.jid = ?
+			ORDER BY m.timestamp DESC LIMIT ?`, safeQ, jidFilter, limit)
+	} else {
+		rows, err = msgDB.Query(`SELECT m.id, m.jid, m.from_me, m.text, m.timestamp, m.type, m.sender_name, m.media_url
+			FROM messages m JOIN messages_fts f ON m.rowid = f.rowid
+			WHERE messages_fts MATCH ?
+			ORDER BY m.timestamp DESC LIMIT ?`, safeQ, limit)
+	}
+	if err != nil {
+		log.Printf("FTS search error: %v", err)
+		jsonOK(w, []StoredMessage{})
+		return
+	}
+	defer rows.Close()
+	results := scanMessages(rows)
+	jsonOK(w, results)
 }
 
 func formatDuration(ms int64) string {
