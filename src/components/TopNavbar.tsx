@@ -124,6 +124,38 @@ export default function TopNavbar() {
             <span className="hidden lg:inline">{link.label}</span>
           </NavLink>
         ))}
+
+        {/* Management Dropdown */}
+        <div className="relative" ref={managementRef}>
+          <button
+            onClick={() => setShowManagement(!showManagement)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+              isManagementActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            )}
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Gerenciamento</span>
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {showManagement && (
+            <div className="absolute left-0 top-9 w-48 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden py-1">
+              {managementLinks.map((link) => (
+                <button
+                  key={link.to}
+                  onClick={() => { navigate(link.to); setShowManagement(false); }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors",
+                    location.pathname === link.to ? "bg-primary/10 text-primary font-semibold" : "text-foreground"
+                  )}
+                >
+                  <link.icon className="w-3.5 h-3.5" />
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="flex-1 max-w-md ml-auto">
