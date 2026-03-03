@@ -15,7 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   ArrowLeft, Save, Play, Plus, MessageSquare, List,
-  ArrowRightToLine, GitBranch, FileInput, StopCircle, Trash2, UserCheck, Timer,
+  ArrowRightToLine, GitBranch, FileInput, StopCircle, Trash2, UserCheck, Timer, Download,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFlowStore, type FlowNodeData, type FlowNodeType } from "@/stores/flow-store";
@@ -50,7 +50,7 @@ const NODE_PALETTE: { type: string; nodeType: FlowNodeType; label: string; icon:
 export default function FlowBuilder() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { flows, updateFlow } = useFlowStore();
+  const { flows, updateFlow, exportFlow } = useFlowStore();
   const flow = flows.find((f) => f.id === id);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flow?.nodes || []);
@@ -112,6 +112,22 @@ export default function FlowBuilder() {
     toast.success("Fluxo salvo com sucesso!");
   };
 
+  const handleExport = () => {
+    if (!id) return;
+    // Save first so export has latest data
+    updateFlow(id, { nodes, edges });
+    const json = exportFlow(id);
+    if (!json) return;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fluxo-${flow!.name.toLowerCase().replace(/\s+/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Fluxo exportado!");
+  };
+
   if (!flow) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -139,6 +155,9 @@ export default function FlowBuilder() {
               <Trash2 className="w-3.5 h-3.5" /> Excluir nó
             </button>
           )}
+          <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-accent text-foreground border border-border transition-colors">
+            <Download className="w-3.5 h-3.5" /> Exportar
+          </button>
           <button onClick={handleSave} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
             <Save className="w-3.5 h-3.5" /> Salvar
           </button>

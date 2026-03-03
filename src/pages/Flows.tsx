@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   GitBranch, Plus, Search, Play, Pause, Edit2, Trash2, Copy,
   MoreVertical, Zap, X, Link2, Unlink, Wifi, WifiOff, Smartphone,
+  Download, Upload,
 } from "lucide-react";
 import { useFlowStore, type Flow } from "@/stores/flow-store";
 import { useConnectionStore } from "@/stores/connection-store";
@@ -18,7 +19,7 @@ const triggerLabels: Record<string, { label: string; color: string }> = {
 
 export default function Flows() {
   const navigate = useNavigate();
-  const { flows, addFlow, deleteFlow, updateFlow, duplicateFlow } = useFlowStore();
+  const { flows, addFlow, deleteFlow, updateFlow, duplicateFlow, exportFlow, importFlow } = useFlowStore();
   const { connections } = useConnectionStore();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -66,6 +67,43 @@ export default function Flows() {
     toast.success(flow.isActive ? "Fluxo desativado" : "Fluxo ativado");
   };
 
+  const handleExport = (flow: Flow) => {
+    const json = exportFlow(flow.id);
+    if (!json) return;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fluxo-${flow.name.toLowerCase().replace(/\s+/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Fluxo exportado!");
+    setMenuOpen(null);
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result as string;
+        const flow = importFlow(result);
+        if (flow) {
+          toast.success(`Fluxo "${flow.name}" importado!`);
+          navigate(`/flows/${flow.id}`);
+        } else {
+          toast.error("Arquivo JSON inválido");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
       {/* Header */}
@@ -79,12 +117,20 @@ export default function Flows() {
             <p className="text-xs text-muted-foreground">{flows.length} fluxos configurados</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Novo Fluxo
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleImport}
+            className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-accent transition-colors border border-border"
+          >
+            <Upload className="w-4 h-4" /> Importar
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Novo Fluxo
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -130,6 +176,9 @@ export default function Flows() {
                     <div className="absolute right-0 top-8 w-40 bg-popover border border-border rounded-lg shadow-lg z-10 py-1">
                       <button onClick={() => { duplicateFlow(flow.id); setMenuOpen(null); toast.success("Fluxo duplicado"); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent">
                         <Copy className="w-3.5 h-3.5" /> Duplicar
+                      </button>
+                      <button onClick={() => handleExport(flow)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent">
+                        <Download className="w-3.5 h-3.5" /> Exportar JSON
                       </button>
                       <button onClick={() => { setConfirmDelete(flow); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10">
                         <Trash2 className="w-3.5 h-3.5" /> Excluir
