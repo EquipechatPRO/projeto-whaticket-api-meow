@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useWSStatus } from "@/stores/ws-status-store";
 
 const navLinks = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
