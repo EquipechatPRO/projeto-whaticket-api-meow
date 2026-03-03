@@ -182,6 +182,103 @@ export default function NodeConfigPanel({ node, onUpdate, onClose }: Props) {
             </div>
           </>
         )}
+
+        {/* Transfer config */}
+        {d.type === "transfer" && (
+          <>
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Transferir para</label>
+              <select
+                value={d.transferTo || "agent"}
+                onChange={(e) => update({ transferTo: e.target.value as "agent" | "queue" })}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+              >
+                <option value="agent">Próximo atendente disponível</option>
+                <option value="queue">Fila específica</option>
+              </select>
+            </div>
+            {d.transferTo === "queue" && (
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Fila</label>
+                <select
+                  value={d.transferQueueId || ""}
+                  onChange={(e) => update({ transferQueueId: e.target.value })}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                >
+                  <option value="">Selecione uma fila</option>
+                  {queues.map((q) => (
+                    <option key={q.id} value={q.id}>{q.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Mensagem ao transferir</label>
+              <textarea
+                value={d.transferMessage || ""}
+                onChange={(e) => update({ transferMessage: e.target.value })}
+                rows={2}
+                placeholder="Ex: Aguarde, transferindo para um atendente..."
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+            </div>
+          </>
+        )}
+
+        {/* Wait config */}
+        {d.type === "wait" && (
+          <>
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Tempo de espera</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={d.waitTimeout || 30}
+                  onChange={(e) => update({ waitTimeout: Number(e.target.value) })}
+                  min={1}
+                  className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                />
+                <select
+                  value={d.waitUnit || "seconds"}
+                  onChange={(e) => update({ waitUnit: e.target.value as any })}
+                  className="w-24 bg-secondary border border-border rounded-lg px-2 py-2 text-sm text-foreground outline-none"
+                >
+                  <option value="seconds">seg</option>
+                  <option value="minutes">min</option>
+                  <option value="hours">horas</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Ação no timeout</label>
+              <select
+                value={d.waitTimeoutAction || "end"}
+                onChange={(e) => update({ waitTimeoutAction: e.target.value as any })}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+              >
+                <option value="end">Encerrar conversa</option>
+                <option value="message">Enviar mensagem</option>
+                <option value="transfer">Transferir para atendente</option>
+              </select>
+            </div>
+            {d.waitTimeoutAction === "message" && (
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Mensagem de timeout</label>
+                <textarea
+                  value={d.waitTimeoutMessage || ""}
+                  onChange={(e) => update({ waitTimeoutMessage: e.target.value })}
+                  rows={2}
+                  placeholder="Ex: Tempo esgotado, tente novamente mais tarde."
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring resize-none"
+                />
+              </div>
+            )}
+            <div className="flex gap-2 text-[10px]">
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary" /> Resposta</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Timeout</div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
