@@ -43,6 +43,11 @@ export interface WhatsAppConnection {
   // Fluxo Padrão
   defaultFlowId: string;
   outOfHoursFlowId: string;
+  // Horários de Atendimento
+  businessHoursEnabled: boolean;
+  businessHours: {
+    [day: string]: { enabled: boolean; start: string; end: string };
+  };
 }
 
 interface ConnectionStore {
@@ -92,6 +97,16 @@ const defaultConnectionFields = {
   chatbotMaxTokens: 500,
   defaultFlowId: "",
   outOfHoursFlowId: "",
+  businessHoursEnabled: false,
+  businessHours: {
+    monday: { enabled: true, start: "08:00", end: "18:00" },
+    tuesday: { enabled: true, start: "08:00", end: "18:00" },
+    wednesday: { enabled: true, start: "08:00", end: "18:00" },
+    thursday: { enabled: true, start: "08:00", end: "18:00" },
+    friday: { enabled: true, start: "08:00", end: "18:00" },
+    saturday: { enabled: false, start: "08:00", end: "12:00" },
+    sunday: { enabled: false, start: "08:00", end: "12:00" },
+  },
 };
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
