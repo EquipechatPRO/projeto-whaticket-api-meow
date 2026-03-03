@@ -260,10 +260,10 @@ export default function Dashboard() {
           loading={loading}
         />
         <KPICard
-          title="Não Lidas"
-          value={String(totalUnread)}
-          subtitle="mensagens pendentes"
-          icon={AlertCircle}
+          title="Tempo Médio"
+          value={avgResponseTime}
+          subtitle={`${stats?.responseSamples || 0} amostras`}
+          icon={Clock}
           color="bg-warning/10 text-warning"
           loading={loading}
         />
