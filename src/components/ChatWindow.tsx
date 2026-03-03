@@ -8,17 +8,22 @@ import {
   Smile,
   MoreVertical,
   Phone,
-  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface PresenceInfo {
+  presence: "composing" | "paused" | "available" | "unavailable";
+  lastSeen?: string;
+}
 
 interface Props {
   chat: Chat;
   messages: Message[];
   onMessageSent: () => void;
+  presence?: PresenceInfo;
 }
 
-export default function ChatWindow({ chat, messages, onMessageSent }: Props) {
+export default function ChatWindow({ chat, messages, onMessageSent, presence }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -41,6 +46,22 @@ export default function ChatWindow({ chat, messages, onMessageSent }: Props) {
     }
   };
 
+  const presenceLabel = (() => {
+    if (!presence) return null;
+    switch (presence.presence) {
+      case "composing":
+        return "digitando...";
+      case "available":
+        return "online";
+      case "unavailable":
+        return presence.lastSeen
+          ? `visto por último ${format(new Date(presence.lastSeen), "HH:mm")}`
+          : "offline";
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -55,9 +76,20 @@ export default function ChatWindow({ chat, messages, onMessageSent }: Props) {
             <div>
               <h3 className="font-semibold text-sm text-foreground">{chat.name}</h3>
               <p className="text-xs text-muted-foreground">
-                {chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "")}
-                {chat.assignedTo && (
-                  <span className="ml-2 text-primary">• Atribuído à: {chat.assignedTo}</span>
+                {presenceLabel ? (
+                  <span className={cn(
+                    presence?.presence === "composing" && "text-green-500 font-medium",
+                    presence?.presence === "available" && "text-green-500"
+                  )}>
+                    {presenceLabel}
+                  </span>
+                ) : (
+                  <>
+                    {chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "")}
+                    {chat.assignedTo && (
+                      <span className="ml-2 text-primary">• Atribuído à: {chat.assignedTo}</span>
+                    )}
+                  </>
                 )}
               </p>
             </div>
