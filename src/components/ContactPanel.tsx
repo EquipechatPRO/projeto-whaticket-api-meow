@@ -24,13 +24,34 @@ interface Props {
   onClose: () => void;
 }
 
+const TAG_COLORS = [
+  { name: "Cinza", bg: "bg-muted", text: "text-muted-foreground" },
+  { name: "Verde", bg: "bg-green-500/15", text: "text-green-600" },
+  { name: "Azul", bg: "bg-blue-500/15", text: "text-blue-600" },
+  { name: "Vermelho", bg: "bg-red-500/15", text: "text-red-600" },
+  { name: "Amarelo", bg: "bg-yellow-500/15", text: "text-yellow-700" },
+  { name: "Roxo", bg: "bg-purple-500/15", text: "text-purple-600" },
+  { name: "Rosa", bg: "bg-pink-500/15", text: "text-pink-600" },
+  { name: "Laranja", bg: "bg-orange-500/15", text: "text-orange-600" },
+] as const;
+
+type TagColor = (typeof TAG_COLORS)[number];
+
+interface TagItem {
+  label: string;
+  color: TagColor;
+}
+
 export default function ContactPanel({ chat, open, onClose }: Props) {
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
   const [profilePic, setProfilePic] = useState("");
-  const [tags, setTags] = useState<string[]>(chat.tags || []);
+  const [tags, setTags] = useState<TagItem[]>(
+    (chat.tags || []).map((t) => ({ label: t, color: TAG_COLORS[0] }))
+  );
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const [selectedColor, setSelectedColor] = useState<TagColor>(TAG_COLORS[1]);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const phone = chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "");
