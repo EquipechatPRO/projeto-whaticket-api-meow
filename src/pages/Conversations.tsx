@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, Chat, Message } from "@/services/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   MessageSquare,
   Clock,
