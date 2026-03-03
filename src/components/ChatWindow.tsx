@@ -59,6 +59,15 @@ export default function ChatWindow({
   const [transferTo, setTransferTo] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [showContactPanel, setShowContactPanel] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
+  const [imageCaption, setImageCaption] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
