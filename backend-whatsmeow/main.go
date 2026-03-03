@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/rs/cors"
 	"github.com/skip2/go-qrcode"
 
@@ -36,6 +37,149 @@ var (
 	msgMu     sync.RWMutex
 )
 
+// ─── WebSocket Hub ─────────────────────────────────────────
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+type WSClient struct {
+	conn *websocket.Conn
+	send chan []byte
+}
+
+type WSHub struct {
+	clients    map[*WSClient]bool
+	broadcast  chan []byte
+	register   chan *WSClient
+	unregister chan *WSClient
+	mu         sync.RWMutex
+}
+
+var hub = &WSHub{
+	clients:    make(map[*WSClient]bool),
+	broadcast:  make(chan []byte, 256),
+	register:   make(chan *WSClient),
+	unregister: make(chan *WSClient),
+}
+
+func (h *WSHub) run() {
+	for {
+		select {
+		case c := <-h.register:
+			h.mu.Lock()
+			h.clients[c] = true
+			h.mu.Unlock()
+			log.Printf("📡 WebSocket client connected (%d total)", len(h.clients))
+		case c := <-h.unregister:
+			h.mu.Lock()
+			if _, ok := h.clients[c]; ok {
+				delete(h.clients, c)
+				close(c.send)
+			}
+			h.mu.Unlock()
+			log.Printf("📡 WebSocket client disconnected (%d total)", len(h.clients))
+		case msg := <-h.broadcast:
+			h.mu.RLock()
+			for c := range h.clients {
+				select {
+				case c.send <- msg:
+				default:
+					h.mu.RUnlock()
+					h.mu.Lock()
+					delete(h.clients, c)
+					close(c.send)
+					h.mu.Unlock()
+					h.mu.RLock()
+				}
+			}
+			h.mu.RUnlock()
+		}
+	}
+}
+
+func (c *WSClient) writePump() {
+	defer c.conn.Close()
+	for msg := range c.send {
+		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			return
+		}
+	}
+}
+
+func (c *WSClient) readPump() {
+	defer func() {
+		hub.unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(512)
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+	for {
+		_, _, err := c.conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
+// Broadcast a typed event to all WS clients
+type WSEvent struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+func broadcastEvent(eventType string, data interface{}) {
+	evt := WSEvent{Type: eventType, Data: data}
+	b, err := json.Marshal(evt)
+	if err != nil {
+		return
+	}
+	hub.broadcast <- b
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WS upgrade error: %v", err)
+		return
+	}
+	c := &WSClient{conn: conn, send: make(chan []byte, 256)}
+	hub.register <- c
+
+	// Send current status on connect
+	connMu.RLock()
+	isConn := connected
+	connMu.RUnlock()
+	phone, name := "", ""
+	if client.Store.ID != nil {
+		phone = client.Store.ID.User
+		name = client.Store.PushName
+	}
+	statusData, _ := json.Marshal(WSEvent{
+		Type: "status",
+		Data: map[string]interface{}{"connected": isConn, "phone": phone, "name": name},
+	})
+	c.send <- statusData
+
+	go c.writePump()
+	go c.readPump()
+
+	// Keep-alive pings
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}()
+}
+
+// ─── Data Types ────────────────────────────────────────────
 type StoredMessage struct {
 	ID         string `json:"id"`
 	JID        string `json:"jid"`
@@ -52,6 +196,9 @@ func main() {
 	if port == "" {
 		port = "3000"
 	}
+
+	// Start WebSocket hub
+	go hub.run()
 
 	dbLog := waLog.Stdout("DB", "WARN", true)
 	container, err := sqlstore.New("sqlite3", "file:whatsmeow.db?_foreign_keys=on", dbLog)
@@ -80,6 +227,9 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+
+	// WebSocket
+	r.HandleFunc("/ws", handleWebSocket)
 
 	// Sessão
 	r.HandleFunc("/api/qrcode", handleQRCode).Methods("GET")
@@ -115,7 +265,7 @@ func main() {
 	r.HandleFunc("/api/presence", handleSetPresence).Methods("POST")
 	r.HandleFunc("/api/webhook", handleWebhook).Methods("GET", "POST")
 
-	// Filas (gerenciado pelo frontend, mas API para persistir)
+	// Filas
 	r.HandleFunc("/api/transfer", handleTransfer).Methods("POST")
 	r.HandleFunc("/api/close", handleClose).Methods("POST")
 
@@ -129,6 +279,7 @@ func main() {
 	srv := &http.Server{Addr: ":" + port, Handler: handler}
 	go func() {
 		log.Printf("🚀 API WhatsApp rodando na porta %s", port)
+		log.Printf("📡 WebSocket disponível em ws://localhost:%s/ws", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -152,10 +303,14 @@ func eventHandler(evt interface{}) {
 		connMu.Lock()
 		connected = true
 		connMu.Unlock()
+		broadcastEvent("status", map[string]interface{}{"connected": true})
+
 	case *events.Disconnected:
 		connMu.Lock()
 		connected = false
 		connMu.Unlock()
+		broadcastEvent("status", map[string]interface{}{"connected": false})
+
 	case *events.Message:
 		msg := StoredMessage{
 			ID: v.Info.ID, JID: v.Info.Chat.String(),
@@ -184,9 +339,50 @@ func eventHandler(evt interface{}) {
 			messages = messages[len(messages)-10000:]
 		}
 		msgMu.Unlock()
+
+		// Broadcast new message to all WS clients
+		broadcastEvent("message", msg)
+
+		// Broadcast updated chat info
+		broadcastEvent("chat_update", map[string]interface{}{
+			"jid":             msg.JID,
+			"name":            msg.SenderName,
+			"lastMessage":     msg.Text,
+			"lastMessageTime": msg.Timestamp,
+			"isGroup":         len(msg.JID) > 20,
+		})
+
+	case *events.Receipt:
+		if v.Type == events.ReceiptTypeRead || v.Type == events.ReceiptTypeDelivered {
+			broadcastEvent("receipt", map[string]interface{}{
+				"jid":        v.Chat.String(),
+				"messageIds": v.MessageIDs,
+				"type":       string(v.Type),
+				"timestamp":  v.Timestamp.Format(time.RFC3339),
+			})
+		}
+
+	case *events.Presence:
+		broadcastEvent("presence", map[string]interface{}{
+			"jid":         v.From.String(),
+			"available":   v.Unavailable == false,
+			"lastSeen":    v.LastSeen.Format(time.RFC3339),
+		})
+
+	case *events.ChatPresence:
+		state := "paused"
+		if v.State == types.ChatPresenceComposing {
+			state = "composing"
+		}
+		broadcastEvent("typing", map[string]interface{}{
+			"jid":   v.MessageSource.Chat.String(),
+			"from":  v.MessageSource.Sender.String(),
+			"state": state,
+		})
 	}
 }
 
+// ─── Utility ───────────────────────────────────────────────
 func jsonOK(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
@@ -199,6 +395,8 @@ func jsonErr(w http.ResponseWriter, msg string, code int) {
 func parseJID(s string) (types.JID, error) {
 	return types.ParseJID(s)
 }
+
+// ─── Handlers (unchanged) ──────────────────────────────────
 
 func handleQRCode(w http.ResponseWriter, r *http.Request) {
 	if client.Store.ID != nil {
@@ -246,6 +444,7 @@ func handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	connMu.Lock()
 	connected = false
 	connMu.Unlock()
+	broadcastEvent("status", map[string]interface{}{"connected": false})
 	jsonOK(w, map[string]bool{"success": true})
 }
 
