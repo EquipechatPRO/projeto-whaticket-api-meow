@@ -1,9 +1,9 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, MessageSquare, Bot, Shield, Settings,
   Search, Bell, Moon, Sun, MessageCircle, Zap, LogOut, Building2, GitBranch,
   Menu, User, Users, CreditCard, Key, HelpCircle,
-  BellRing, Volume2,
+  BellRing, Volume2, ChevronDown, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
@@ -28,6 +28,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
 
 export default function TopNavbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState("");
   const wsConnected = useWSStatus((s) => s.isConnected);
@@ -40,30 +41,38 @@ export default function TopNavbar() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
   const [notifTab, setNotifTab] = useState<"messages" | "settings">("messages");
 
   const langRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLDivElement>(null);
+  const managementRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(langRef, () => setShowLangMenu(false));
   useClickOutside(notifRef, () => setShowNotifMenu(false));
   useClickOutside(hamburgerRef, () => setShowHamburger(false));
+  useClickOutside(managementRef, () => setShowManagement(false));
 
   const isSuperAdmin = user?.role === "super_admin";
 
   const navLinks = [
     { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
     { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
-    { to: "/contacts", icon: Bot, label: t("nav.contacts") },
     { to: "/queues", icon: Shield, label: t("nav.queues") },
-    { to: "/flows", icon: GitBranch, label: "Fluxos" },
-    { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
     ...(user?.role === "company_admin" || isSuperAdmin
       ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
       : []),
-    { to: "/connection", icon: Settings, label: t("nav.connection") },
   ];
+
+  const managementLinks = [
+    { to: "/connection", icon: Settings, label: t("nav.connection") },
+    { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
+    { to: "/flows", icon: GitBranch, label: "Fluxos" },
+    { to: "/contacts", icon: Bot, label: t("nav.contacts") },
+  ];
+
+  const isManagementActive = managementLinks.some((l) => location.pathname === l.to);
 
   const handleLogout = () => {
     logout();
@@ -115,6 +124,38 @@ export default function TopNavbar() {
             <span className="hidden lg:inline">{link.label}</span>
           </NavLink>
         ))}
+
+        {/* Management Dropdown */}
+        <div className="relative" ref={managementRef}>
+          <button
+            onClick={() => setShowManagement(!showManagement)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+              isManagementActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            )}
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Gerenciamento</span>
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {showManagement && (
+            <div className="absolute left-0 top-9 w-48 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden py-1">
+              {managementLinks.map((link) => (
+                <button
+                  key={link.to}
+                  onClick={() => { navigate(link.to); setShowManagement(false); }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors",
+                    location.pathname === link.to ? "bg-primary/10 text-primary font-semibold" : "text-foreground"
+                  )}
+                >
+                  <link.icon className="w-3.5 h-3.5" />
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="flex-1 max-w-md ml-auto">
