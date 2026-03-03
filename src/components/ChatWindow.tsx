@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
 import ContactPanel from "@/components/ContactPanel";
+import { QuickReplyList, QuickReply } from "@/components/QuickReplies";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -64,6 +65,8 @@ export default function ChatWindow({
   const [recordingTime, setRecordingTime] = useState(0);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [imageCaption, setImageCaption] = useState("");
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [quickReplyFilter, setQuickReplyFilter] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
