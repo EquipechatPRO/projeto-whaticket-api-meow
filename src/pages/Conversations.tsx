@@ -71,6 +71,10 @@ export default function Conversations() {
       });
       if (!msg.fromMe && selectedJid !== msg.jid) {
         toast.info(`Nova mensagem de ${msg.senderName || msg.jid}`);
+        notify(`Nova mensagem de ${msg.senderName || msg.jid}`, {
+          body: msg.text?.slice(0, 100) || "Nova mensagem",
+          tag: msg.jid,
+        });
       }
     }, [selectedJid]),
     onTyping: useCallback((data: { jid: string; from: string; state: string }) => {
