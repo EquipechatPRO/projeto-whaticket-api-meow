@@ -57,6 +57,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
                   message: evt.data.text || "📎 Mídia",
                   timestamp: evt.data.timestamp || new Date().toISOString(),
                 });
+                playNotificationSound();
               }
               break;
             case "chat_update":
