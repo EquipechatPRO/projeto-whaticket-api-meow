@@ -74,6 +74,14 @@ export default function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
   const handleSend = async () => {
     if (!text.trim() || sending) return;
     setSending(true);
@@ -87,6 +95,99 @@ export default function ChatWindow({
       setSending(false);
     }
   };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem");
+      return;
+    }
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Imagem deve ter no máximo 16MB");
+      return;
+    }
+    setImagePreview({ file, url: URL.createObjectURL(file) });
+    setShowAttachMenu(false);
+  };
+
+  const handleSendImage = async () => {
+    if (!imagePreview) return;
+    setSending(true);
+    try {
+      // In real implementation, upload file first then send URL
+      const fakeUrl = URL.createObjectURL(imagePreview.file);
+      await api.sendImage(chat.jid, fakeUrl, imageCaption || undefined);
+      setImagePreview(null);
+      setImageCaption("");
+      onMessageSent();
+      toast.success("Imagem enviada");
+    } catch {
+      toast.error("Erro ao enviar imagem");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        clearInterval(recordingTimerRef.current);
+        setRecordingTime(0);
+
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (blob.size < 500) return; // too short
+
+        setSending(true);
+        try {
+          const fakeUrl = URL.createObjectURL(blob);
+          await api.sendAudio(chat.jid, fakeUrl);
+          onMessageSent();
+          toast.success("Áudio enviado");
+        } catch {
+          toast.error("Erro ao enviar áudio");
+        } finally {
+          setSending(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((t) => t + 1);
+      }, 1000);
+    } catch {
+      toast.error("Não foi possível acessar o microfone");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    mediaRecorderRef.current = null;
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    setRecordingTime(0);
+    audioChunksRef.current = [];
+  };
+
+  const formatRecTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   const executeAction = async () => {
     setActionLoading(true);
