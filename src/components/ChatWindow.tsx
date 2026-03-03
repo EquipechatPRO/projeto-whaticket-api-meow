@@ -52,6 +52,7 @@ export default function ChatWindow({
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [transferTo, setTransferTo] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
