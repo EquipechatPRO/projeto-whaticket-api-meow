@@ -39,7 +39,7 @@ const MASTER_ADMIN = {
 // Mock users for login (includes master admin + company users)
 const mockUsers: Array<User & { password: string }> = [
   MASTER_ADMIN,
-  { id: "u2", name: "Carlos Silva", email: "carlos@techcorp.com", password: "123456", role: "company_admin", companyId: "c1", companyName: "TechCorp" },
+  { id: "u2", name: "Carlos Silva", email: "carlos@techcorp.com", password: "123456", role: "super_admin", companyId: "c1", companyName: "TechCorp" },
   { id: "u3", name: "Ana Souza", email: "ana@techcorp.com", password: "123456", role: "agent", companyId: "c1", companyName: "TechCorp" },
   { id: "u4", name: "Pedro Lima", email: "pedro@vendamax.com", password: "123456", role: "supervisor", companyId: "c2", companyName: "VendaMax" },
 ];
