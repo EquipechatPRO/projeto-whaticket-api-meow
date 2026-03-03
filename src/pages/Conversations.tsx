@@ -117,7 +117,21 @@ export default function Conversations() {
     api.getMessages(jid).then(setMessages);
   };
 
-  const updateChatStatus = (jid: string, status: Chat["status"]) => {
+  // Full-text search with debounce
+  useEffect(() => {
+    if (mainTab !== "search" || !search.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      api.searchMessages(search.trim()).then((results) => {
+        setSearchResults(results as unknown as SearchResult[]);
+        setIsSearching(false);
+      }).catch(() => setIsSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, mainTab]);
     setChats((prev) =>
       prev.map((c): Chat => (c.jid === jid ? { ...c, status } : c))
     );
