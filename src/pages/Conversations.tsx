@@ -223,11 +223,11 @@ export default function Conversations() {
     resolved: chats.filter((c) => c.status === "resolved").length,
   };
 
-  const mainTabs: { key: MainTab; label: string; icon: typeof Inbox; count?: number }[] = [
-    { key: "inbox", label: "Inbox", icon: Inbox },
-    { key: "paused", label: "Pausados", icon: PauseCircle, count: counts.paused },
-    { key: "resolved", label: "Resolvidos", icon: CheckCircle, count: counts.resolved },
-    { key: "search", label: "Busca", icon: Search },
+  const mainTabs: { key: MainTab; icon: typeof Inbox; count?: number; tooltip: string }[] = [
+    { key: "inbox", icon: Inbox, tooltip: "Inbox" },
+    { key: "paused", icon: PauseCircle, count: counts.paused, tooltip: "Pausados" },
+    { key: "resolved", icon: CheckCircle, count: counts.resolved, tooltip: "Resolvidos" },
+    { key: "search", icon: Search, tooltip: "Busca" },
   ];
 
   const subTabs: { key: SubTab; label: string; icon: typeof MessageSquare; count: number; color: string }[] = [
@@ -238,31 +238,31 @@ export default function Conversations() {
   ];
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full pb-2">
       {/* Left Panel */}
       <div className="w-[380px] border-r border-border flex flex-col bg-card shrink-0">
-        {/* Main Tabs */}
+        {/* Main Tabs - icon only */}
         <div className="flex border-b border-border">
           {mainTabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setMainTab(t.key)}
+              title={t.tooltip}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors border-b-2 relative",
+                "flex-1 flex items-center justify-center py-3 transition-colors border-b-2 relative",
                 mainTab === t.key
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               <div className="relative">
-                <t.icon className="w-4 h-4" />
+                <t.icon className="w-5 h-5" />
                 {t.count != null && t.count > 0 && (
-                  <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center bg-warning text-warning-foreground">
+                  <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center bg-destructive text-destructive-foreground">
                     {t.count}
                   </span>
                 )}
               </div>
-              {t.label}
             </button>
           ))}
         </div>
