@@ -354,5 +354,12 @@ export default function ChatWindow({
         </div>
       </div>
     </div>
+
+      <ContactPanel
+        chat={chat}
+        open={showContactPanel}
+        onClose={() => setShowContactPanel(false)}
+      />
+    </div>
   );
 }
