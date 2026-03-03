@@ -12,6 +12,7 @@ import QuickRepliesPage from "./pages/QuickRepliesPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SuperAdmin from "./pages/SuperAdmin";
+import Plans from "./pages/Plans";
 import { useAuth } from "./stores/auth-store";
 
 const queryClient = new QueryClient();
