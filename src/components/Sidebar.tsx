@@ -5,6 +5,7 @@ import {
   Users,
   Wifi,
   Settings,
+  ListOrdered,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ const links = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/conversations", icon: MessageSquare, label: "Atendimento" },
   { to: "/contacts", icon: Users, label: "Contatos" },
+  { to: "/queues", icon: ListOrdered, label: "Filas" },
   { to: "/connection", icon: Wifi, label: "Conexão" },
 ];
 
@@ -31,9 +33,7 @@ export default function Sidebar() {
             cn(
               "w-12 h-12 flex items-center justify-center rounded-lg transition-colors",
               "hover:bg-sidebar-accent",
-              isActive
-                ? "bg-sidebar-accent text-primary"
-                : "text-muted-foreground"
+              isActive ? "bg-sidebar-accent text-primary" : "text-muted-foreground"
             )
           }
           title={link.label}
