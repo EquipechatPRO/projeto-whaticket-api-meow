@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
+import ContactPanel from "@/components/ContactPanel";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -51,6 +52,7 @@ export default function ChatWindow({
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [transferTo, setTransferTo] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -140,7 +142,8 @@ export default function ChatWindow({
   ];
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex h-full">
+    <div className="flex flex-col flex-1 min-w-0 relative">
       {/* Confirmation Modal */}
       {confirmAction && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -210,7 +213,13 @@ export default function ChatWindow({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button className="w-7 h-7 flex items-center justify-center rounded hover:bg-accent text-muted-foreground">
+            <button
+              onClick={() => setShowContactPanel(!showContactPanel)}
+              className={cn(
+                "w-7 h-7 flex items-center justify-center rounded hover:bg-accent transition-colors",
+                showContactPanel ? "text-primary bg-primary/10" : "text-muted-foreground"
+              )}
+            >
               <Info className="w-4 h-4" />
             </button>
             <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
@@ -344,6 +353,13 @@ export default function ChatWindow({
           </button>
         </div>
       </div>
+    </div>
+
+      <ContactPanel
+        chat={chat}
+        open={showContactPanel}
+        onClose={() => setShowContactPanel(false)}
+      />
     </div>
   );
 }
