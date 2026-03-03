@@ -410,19 +410,50 @@ export default function ChatWindow({
               >
                 <div
                   className={cn(
-                    "max-w-[65%] px-3 py-2 rounded-lg text-sm shadow-sm relative",
+                    "max-w-[65%] rounded-lg text-sm shadow-sm relative overflow-hidden",
                     msg.fromMe
                       ? "bg-chat-sent text-foreground rounded-tr-none"
-                      : "bg-chat-received text-foreground rounded-tl-none"
+                      : "bg-chat-received text-foreground rounded-tl-none",
+                    msg.type === "image" ? "p-1" : "px-3 py-2"
                   )}
                 >
                   {!msg.fromMe && msg.senderName && (
-                    <p className="text-[11px] font-semibold text-primary mb-0.5">
+                    <p className={cn("text-[11px] font-semibold text-primary mb-0.5", msg.type === "image" && "px-2 pt-1")}>
                       {msg.senderName}
                     </p>
                   )}
-                  <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{msg.text}</p>
-                  <div className={cn("flex items-center gap-1 mt-1", msg.fromMe ? "justify-end" : "justify-start")}>
+
+                  {/* Image message */}
+                  {msg.type === "image" && msg.mediaUrl && (
+                    <div className="mb-1">
+                      <img
+                        src={msg.mediaUrl}
+                        alt="Imagem"
+                        className="rounded-md max-h-[280px] w-full object-cover cursor-pointer"
+                        onClick={() => window.open(msg.mediaUrl, "_blank")}
+                      />
+                      {msg.caption && (
+                        <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed px-2 pt-1">{msg.caption}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Audio message */}
+                  {msg.type === "audio" && msg.mediaUrl && (
+                    <div className="flex items-center gap-2 min-w-[200px]">
+                      <FileAudio className="w-4 h-4 text-primary shrink-0" />
+                      <audio controls className="h-8 flex-1 [&::-webkit-media-controls-panel]:bg-transparent">
+                        <source src={msg.mediaUrl} />
+                      </audio>
+                    </div>
+                  )}
+
+                  {/* Text message */}
+                  {(msg.type === "text" || (!msg.type && !msg.mediaUrl)) && (
+                    <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{msg.text}</p>
+                  )}
+
+                  <div className={cn("flex items-center gap-1 mt-1", msg.fromMe ? "justify-end" : "justify-start", msg.type === "image" && "px-2 pb-1")}>
                     <span className="text-[10px] text-foreground/50">
                       {format(new Date(msg.timestamp), "HH:mm")}
                     </span>
