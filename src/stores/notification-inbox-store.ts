@@ -1,4 +1,41 @@
 import { create } from "zustand";
+import { useNotificationPrefs } from "@/stores/notification-store";
+
+// Lazy-init audio context to avoid autoplay restrictions
+let audioCtx: AudioContext | null = null;
+
+function playBeep(volume: number) {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const gain = audioCtx.createGain();
+    gain.gain.value = volume / 100;
+    gain.connect(audioCtx.destination);
+
+    // Two-tone notification beep
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = "sine";
+    osc1.frequency.value = 880;
+    osc1.connect(gain);
+    osc1.start(audioCtx.currentTime);
+    osc1.stop(audioCtx.currentTime + 0.1);
+
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = "sine";
+    osc2.frequency.value = 1200;
+    osc2.connect(gain);
+    osc2.start(audioCtx.currentTime + 0.12);
+    osc2.stop(audioCtx.currentTime + 0.22);
+  } catch {
+    // Silently fail if audio not available
+  }
+}
+
+export function playNotificationSound() {
+  const prefs = useNotificationPrefs.getState();
+  if (prefs.soundEnabled) {
+    playBeep(prefs.soundVolume);
+  }
+}
 
 export interface IncomingNotification {
   id: string;
