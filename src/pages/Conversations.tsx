@@ -37,6 +37,8 @@ export default function Conversations() {
   const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedJid, setSelectedJid] = useState<string | null>(null);
   const [mainTab, setMainTab] = useState<MainTab>("inbox");
   const [subTab, setSubTab] = useState<SubTab>("attending");
@@ -113,10 +115,27 @@ export default function Conversations() {
     api.getChats().then(setChats);
   }, []);
 
+  const PAGE_SIZE = 50;
+
   const loadMessages = (jid: string) => {
     setSelectedJid(jid);
-    api.getMessages(jid).then((res) => setMessages(res.messages));
+    api.getMessages(jid, PAGE_SIZE, 0).then((res) => {
+      setMessages(res.messages);
+      setTotalMessages(res.total);
+    });
   };
+
+  const loadOlderMessages = useCallback(() => {
+    if (!selectedJid || loadingMore) return;
+    const currentCount = messages.length;
+    if (currentCount >= totalMessages) return;
+    setLoadingMore(true);
+    // offset from the end (we fetch newest-first then reverse in backend)
+    api.getMessages(selectedJid, PAGE_SIZE, currentCount).then((res) => {
+      setMessages((prev) => [...res.messages, ...prev]);
+      setTotalMessages(res.total);
+    }).finally(() => setLoadingMore(false));
+  }, [selectedJid, messages.length, totalMessages, loadingMore]);
 
   // Full-text search with debounce
   useEffect(() => {
@@ -392,6 +411,9 @@ export default function Conversations() {
             onTransfer={handleTransfer}
             onDelete={handleDelete}
             onBack={handleBack}
+            hasMore={messages.length < totalMessages}
+            loadingMore={loadingMore}
+            onLoadMore={loadOlderMessages}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-chat-bg">
@@ -408,7 +430,7 @@ export default function Conversations() {
         onCreated={(chat) => {
           setChats((prev) => [chat, ...prev]);
           setSelectedJid(chat.jid);
-          api.getMessages(chat.jid).then((res) => setMessages(res.messages));
+          api.getMessages(chat.jid, 50, 0).then((res) => { setMessages(res.messages); setTotalMessages(res.total); });
         }}
       />
     </div>
