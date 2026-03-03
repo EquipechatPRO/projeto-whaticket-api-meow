@@ -228,9 +228,9 @@ export default function Connection() {
                     <span
                       className={cn(
                         "text-xs font-bold px-2 py-0.5 rounded",
-                        ep.method === "GET" && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                        ep.method === "POST" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                        ep.method === "PUT" && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        ep.method === "GET" && "bg-primary/10 text-primary",
+                        ep.method === "POST" && "bg-accent text-accent-foreground",
+                        ep.method === "PUT" && "bg-secondary text-secondary-foreground"
                       )}
                     >
                       {ep.method}
