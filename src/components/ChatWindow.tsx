@@ -24,8 +24,10 @@ import {
   Mic,
   MicOff,
   FileAudio,
+  FileText,
   Play,
   PauseCircle,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +73,8 @@ export default function ChatWindow({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [docPreview, setDocPreview] = useState<{ file: File; name: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
