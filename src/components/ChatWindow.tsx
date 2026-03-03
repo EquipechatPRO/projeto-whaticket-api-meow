@@ -551,10 +551,42 @@ export default function ChatWindow({
         </div>
       )}
 
+      {/* Document Preview */}
+      {docPreview && !imagePreview && (
+        <div className="border-t border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3 bg-secondary rounded-lg p-3">
+            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{docPreview.name}</p>
+              <p className="text-[11px] text-muted-foreground">{(docPreview.file.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <button
+              onClick={() => setDocPreview(null)}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={handleSendDoc}
+              disabled={sending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Enviar documento
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
-      {!imagePreview && (
+      {!imagePreview && !docPreview && (
         <div className="border-t border-border bg-card px-4 py-3">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar" className="hidden" onChange={handleDocSelect} />
 
           {isRecording ? (
             <div className="flex items-center gap-3">
