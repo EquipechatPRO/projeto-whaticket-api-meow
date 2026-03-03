@@ -241,15 +241,15 @@ export default function Conversations() {
     <div className="flex h-full pb-2">
       {/* Left Panel */}
       <div className="w-[380px] border-r border-border flex flex-col bg-card shrink-0">
-        {/* Main Tabs - icon only */}
-        <div className="flex border-b border-border">
+        {/* Main Tabs */}
+        <div className="flex border-b border-border mt-2">
           {mainTabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setMainTab(t.key)}
               title={t.tooltip}
               className={cn(
-                "flex-1 flex items-center justify-center py-3 transition-colors border-b-2 relative",
+                "flex-1 flex flex-col items-center gap-1 py-3 transition-colors border-b-2 relative",
                 mainTab === t.key
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -263,6 +263,7 @@ export default function Conversations() {
                   </span>
                 )}
               </div>
+              <span className="text-[10px] font-semibold">{t.tooltip}</span>
             </button>
           ))}
         </div>
