@@ -238,9 +238,9 @@ export default function Conversations() {
   ];
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full gap-0">
       {/* Left Panel */}
-      <div className="w-[380px] border-r border-border flex flex-col bg-card shrink-0 overflow-hidden">
+      <div className="w-[380px] border-r border-border flex flex-col shrink-0 overflow-hidden">
         {/* Main Tabs */}
         <div className="flex border-b border-border mt-2">
           {mainTabs.map((t) => (
