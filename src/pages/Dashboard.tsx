@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import api, { Chat, Message } from "@/services/api";
+import api, { Chat, Message, DashboardStats } from "@/services/api";
 import {
   Wifi, WifiOff, MessageSquare, Users, Clock, TrendingUp,
   ArrowUpRight, ArrowDownRight, Phone, BarChart3, Activity,
@@ -144,7 +144,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<{ connected: boolean; phone?: string; name?: string } | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
@@ -154,18 +154,14 @@ export default function Dashboard() {
   const loadData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const [statusRes, chatsRes] = await Promise.all([
+      const [statusRes, chatsRes, statsRes] = await Promise.all([
         api.getStatus().catch(() => ({ connected: false, phone: "", name: "" })),
         api.getChats().catch(() => [] as Chat[]),
+        api.getStats().catch(() => null),
       ]);
       setStatus(statusRes);
       setChats(chatsRes);
-
-      const chatSlice = chatsRes.slice(0, 20);
-      const msgResults = await Promise.all(
-        chatSlice.map((c) => api.getMessages(c.jid, 100).catch(() => [] as Message[]))
-      );
-      setAllMessages(msgResults.flat());
+      if (statsRes) setStats(statsRes);
       setLastUpdate(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -185,19 +181,21 @@ export default function Dashboard() {
     return () => clearInterval(intervalRef.current);
   }, [autoRefresh, loadData]);
 
-  // Derived data
-  const hourlyMessages = useMemo(() => groupMessagesByHour(allMessages), [allMessages]);
+  // Derived data from stats endpoint
+  const hourlyMessages = stats?.hourlyVolume || [];
   const statusDist = useMemo(() => getStatusDistribution(chats), [chats]);
   const agentPerf = useMemo(() => getAgentPerformance(chats), [chats]);
   const queueDist = useMemo(() => getQueueDistribution(chats), [chats]);
+  const dailyVolume = stats?.dailyVolume || [];
 
-  const totalMessages = allMessages.length;
-  const sentMessages = allMessages.filter((m) => m.fromMe).length;
-  const receivedMessages = totalMessages - sentMessages;
+  const totalMessages = stats?.totalMessages || 0;
+  const sentMessages = stats?.sentToday || 0;
+  const receivedMessages = stats?.receivedToday || 0;
   const activeChats = chats.filter((c) => c.status === "attending").length;
   const waitingChats = chats.filter((c) => c.status === "waiting").length;
   const resolvedChats = chats.filter((c) => c.status === "resolved" || c.status === "closed").length;
   const totalUnread = chats.reduce((a, c) => a + c.unreadCount, 0);
+  const avgResponseTime = stats?.avgResponseTime || "—";
 
   const queueColors = ["hsl(210, 80%, 55%)", "hsl(142, 72%, 29%)", "hsl(38, 92%, 50%)", "hsl(280, 60%, 55%)", "hsl(0, 70%, 55%)"];
 
