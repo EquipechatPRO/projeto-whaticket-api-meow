@@ -429,8 +429,9 @@ export default function Dashboard() {
                 { icon: CheckCircle2, label: "Resolvidos", value: String(resolvedChats), color: "text-primary" },
                 { icon: PauseCircle, label: "Aguardando", value: String(waitingChats), color: "text-warning" },
                 { icon: AlertCircle, label: "Não lidas", value: String(totalUnread), color: "text-destructive" },
-                { icon: Users, label: "Grupos", value: String(chats.filter((c) => c.isGroup).length), color: "text-blue-500" },
-                { icon: MessageSquare, label: "Total mensagens", value: String(totalMessages), color: "text-primary" },
+                { icon: Clock, label: "Tempo médio", value: avgResponseTime, color: "text-warning" },
+                { icon: Users, label: "Grupos", value: String(stats?.totalGroups || chats.filter((c) => c.isGroup).length), color: "text-blue-500" },
+                { icon: MessageSquare, label: "Mensagens total", value: String(totalMessages), color: "text-primary" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
