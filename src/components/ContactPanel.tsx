@@ -24,13 +24,34 @@ interface Props {
   onClose: () => void;
 }
 
+const TAG_COLORS = [
+  { name: "Cinza", bg: "bg-muted", text: "text-muted-foreground" },
+  { name: "Verde", bg: "bg-green-500/15", text: "text-green-600" },
+  { name: "Azul", bg: "bg-blue-500/15", text: "text-blue-600" },
+  { name: "Vermelho", bg: "bg-red-500/15", text: "text-red-600" },
+  { name: "Amarelo", bg: "bg-yellow-500/15", text: "text-yellow-700" },
+  { name: "Roxo", bg: "bg-purple-500/15", text: "text-purple-600" },
+  { name: "Rosa", bg: "bg-pink-500/15", text: "text-pink-600" },
+  { name: "Laranja", bg: "bg-orange-500/15", text: "text-orange-600" },
+] as const;
+
+type TagColor = (typeof TAG_COLORS)[number];
+
+interface TagItem {
+  label: string;
+  color: TagColor;
+}
+
 export default function ContactPanel({ chat, open, onClose }: Props) {
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
   const [profilePic, setProfilePic] = useState("");
-  const [tags, setTags] = useState<string[]>(chat.tags || []);
+  const [tags, setTags] = useState<TagItem[]>(
+    (chat.tags || []).map((t) => ({ label: t, color: TAG_COLORS[0] }))
+  );
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const [selectedColor, setSelectedColor] = useState<TagColor>(TAG_COLORS[1]);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const phone = chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "");
@@ -142,15 +163,15 @@ export default function ContactPanel({ chat, open, onClose }: Props) {
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <span
-                key={tag}
-                className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold flex items-center gap-1"
+                key={tag.label}
+                className={cn("text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1", tag.color.bg, tag.color.text)}
               >
-                {tag}
+                {tag.label}
                 <X
                   className="w-2.5 h-2.5 cursor-pointer hover:text-destructive transition-colors"
                   onClick={() => {
-                    setTags((prev) => prev.filter((t) => t !== tag));
-                    toast.success(`Tag "${tag}" removida`);
+                    setTags((prev) => prev.filter((t) => t.label !== tag.label));
+                    toast.success(`Tag "${tag.label}" removida`);
                   }}
                 />
               </span>
@@ -160,46 +181,62 @@ export default function ContactPanel({ chat, open, onClose }: Props) {
             )}
           </div>
           {showTagInput && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <input
-                ref={tagInputRef}
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newTag.trim()) {
-                    const trimmed = newTag.trim();
-                    if (!tags.includes(trimmed)) {
-                      setTags((prev) => [...prev, trimmed]);
-                      toast.success(`Tag "${trimmed}" adicionada`);
+            <div className="mt-2 space-y-2">
+              <div className="flex flex-wrap gap-1">
+                {TAG_COLORS.map((c) => (
+                  <button
+                    key={c.name}
+                    onClick={() => setSelectedColor(c)}
+                    className={cn(
+                      "w-5 h-5 rounded-full border-2 transition-all",
+                      c.bg,
+                      selectedColor.name === c.name ? "border-foreground scale-110" : "border-transparent"
+                    )}
+                    title={c.name}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={tagInputRef}
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTag.trim()) {
+                      const trimmed = newTag.trim();
+                      if (!tags.some((t) => t.label === trimmed)) {
+                        setTags((prev) => [...prev, { label: trimmed, color: selectedColor }]);
+                        toast.success(`Tag "${trimmed}" adicionada`);
+                      }
+                      setNewTag("");
+                      setShowTagInput(false);
                     }
-                    setNewTag("");
-                    setShowTagInput(false);
-                  }
-                  if (e.key === "Escape") {
-                    setNewTag("");
-                    setShowTagInput(false);
-                  }
-                }}
-                placeholder="Nome da tag..."
-                className="flex-1 bg-secondary rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring border border-border"
-              />
-              <button
-                onClick={() => {
-                  if (newTag.trim()) {
-                    const trimmed = newTag.trim();
-                    if (!tags.includes(trimmed)) {
-                      setTags((prev) => [...prev, trimmed]);
-                      toast.success(`Tag "${trimmed}" adicionada`);
+                    if (e.key === "Escape") {
+                      setNewTag("");
+                      setShowTagInput(false);
                     }
-                    setNewTag("");
-                  }
-                  setShowTagInput(false);
-                }}
-                className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap"
-              >
-                OK
-              </button>
+                  }}
+                  placeholder="Nome da tag..."
+                  className="flex-1 bg-secondary rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring border border-border"
+                />
+                <button
+                  onClick={() => {
+                    if (newTag.trim()) {
+                      const trimmed = newTag.trim();
+                      if (!tags.some((t) => t.label === trimmed)) {
+                        setTags((prev) => [...prev, { label: trimmed, color: selectedColor }]);
+                        toast.success(`Tag "${trimmed}" adicionada`);
+                      }
+                      setNewTag("");
+                    }
+                    setShowTagInput(false);
+                  }}
+                  className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           )}
         </div>
