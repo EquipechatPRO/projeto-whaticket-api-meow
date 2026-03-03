@@ -1,9 +1,9 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, MessageSquare, Bot, Shield, Settings,
   Search, Bell, Moon, Sun, MessageCircle, Zap, LogOut, Building2, GitBranch,
   Menu, User, Users, CreditCard, Key, HelpCircle,
-  BellRing, Volume2,
+  BellRing, Volume2, ChevronDown, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
