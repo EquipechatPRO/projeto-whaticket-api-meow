@@ -42,6 +42,7 @@ function AppRoutes() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/queues" element={<Queues />} />
         <Route path="/flows" element={<Flows />} />
+        <Route path="/groups" element={<Groups />} />
         <Route path="/flows/:id" element={<FlowBuilder />} />
         <Route path="/quick-replies" element={<QuickRepliesPage />} />
         <Route path="/settings" element={<Settings />} />

@@ -60,6 +60,7 @@ export default function TopNavbar() {
     { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
     { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
     { to: "/queues", icon: Shield, label: t("nav.queues") },
+    { to: "/groups", icon: Users, label: "Grupos" },
   ];
 
   const managementLinks = [
