@@ -31,6 +31,7 @@ export default function Conversations() {
   const [search, setSearch] = useState("");
   const [selectedSector, setSelectedSector] = useState("all");
   const [typingJids, setTypingJids] = useState<Record<string, string>>({});
+  const [showNewChat, setShowNewChat] = useState(false);
 
   // WebSocket real-time updates
   const { isConnected: wsConnected } = useWebSocket({
@@ -215,7 +216,10 @@ export default function Conversations() {
 
         {/* Actions Row */}
         <div className="flex items-center gap-2 p-3 border-b border-border">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-semibold hover:bg-primary/90 transition-colors">
+          <button
+            onClick={() => setShowNewChat(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
             <Plus className="w-3.5 h-3.5" />
             NOVO
           </button>
@@ -315,6 +319,16 @@ export default function Conversations() {
           </div>
         )}
       </div>
+
+      <NewChatModal
+        open={showNewChat}
+        onClose={() => setShowNewChat(false)}
+        onCreated={(chat) => {
+          setChats((prev) => [chat, ...prev]);
+          setSelectedJid(chat.jid);
+          api.getMessages(chat.jid).then(setMessages);
+        }}
+      />
     </div>
   );
 }
