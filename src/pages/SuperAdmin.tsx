@@ -89,23 +89,35 @@ export default function SuperAdmin() {
 
   const openView = (c: Company) => { setModalMode("view"); setSelectedCompany(c); };
 
+  const logAction = (action: AuditAction, label: string, description: string, targetType: "company" | "plan" | "user" | "system", targetName: string, details?: Record<string, string>) => {
+    addLog({ action, label, description, user: user?.name || "Admin", userEmail: user?.email || "", targetType, targetName, details });
+  };
+
   const handleSave = () => {
     if (!formName.trim() || !formEmail.trim()) { toast.error("Preencha nome e e-mail da empresa"); return; }
     const slug = formSlug.trim() || formName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     if (modalMode === "create") {
       addCompany({ name: formName, slug, email: formEmail, phone: formPhone || undefined, plan: formPlan, status: formStatus, maxAgents: formMaxAgents, agentCount: 0, notes: formNotes || undefined });
+      logAction("company_created", "Empresa criada", `Empresa "${formName}" foi cadastrada com plano ${formPlan}`, "company", formName, { plano: formPlan, email: formEmail });
       toast.success(`Empresa "${formName}" criada com sucesso`);
     } else if (modalMode === "edit" && selectedCompany) {
       updateCompany(selectedCompany.id, { name: formName, slug, email: formEmail, phone: formPhone || undefined, plan: formPlan, status: formStatus, maxAgents: formMaxAgents, notes: formNotes || undefined });
+      logAction("company_updated", "Empresa atualizada", `Empresa "${formName}" foi atualizada`, "company", formName);
       toast.success(`Empresa "${formName}" atualizada`);
     }
     setModalMode(null);
   };
 
-  const handleDelete = (c: Company) => { deleteCompany(c.id); toast.success(`Empresa "${c.name}" removida`); setConfirmDelete(null); };
+  const handleDelete = (c: Company) => {
+    deleteCompany(c.id);
+    logAction("company_deleted", "Empresa excluída", `Empresa "${c.name}" foi excluída permanentemente`, "company", c.name);
+    toast.success(`Empresa "${c.name}" removida`);
+    setConfirmDelete(null);
+  };
   const toggleStatus = (c: Company) => {
     const newStatus = c.status === "suspended" ? "active" : "suspended";
     updateCompany(c.id, { status: newStatus });
+    logAction(newStatus === "suspended" ? "company_suspended" : "company_reactivated", newStatus === "suspended" ? "Empresa suspensa" : "Empresa reativada", `Empresa "${c.name}" foi ${newStatus === "suspended" ? "suspensa" : "reativada"}`, "company", c.name);
     toast.success(`Empresa "${c.name}" ${newStatus === "suspended" ? "suspensa" : "reativada"}`);
   };
 
@@ -163,6 +175,15 @@ export default function SuperAdmin() {
           )}
         >
           <BarChart3 className="w-4 h-4" /> Relatórios
+        </button>
+        <button
+          onClick={() => setActiveTab("audit")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            activeTab === "audit" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ScrollText className="w-4 h-4" /> Auditoria
         </button>
       </div>
 
@@ -266,6 +287,8 @@ export default function SuperAdmin() {
       {activeTab === "plans" && <PlansTab />}
 
       {activeTab === "reports" && <ReportsTab companies={companies} />}
+
+      {activeTab === "audit" && <AuditTab />}
 
       {/* Create/Edit Modal */}
       {(modalMode === "create" || modalMode === "edit") && (
