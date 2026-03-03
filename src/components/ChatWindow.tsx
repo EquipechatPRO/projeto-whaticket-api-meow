@@ -633,6 +633,13 @@ export default function ChatWindow({
                     Enviar imagem
                   </button>
                   <button
+                    onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    Enviar documento
+                  </button>
+                  <button
                     onClick={() => { setShowAttachMenu(false); startRecording(); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
                   >
