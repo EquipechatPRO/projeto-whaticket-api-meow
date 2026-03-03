@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
 import ContactPanel from "@/components/ContactPanel";
 import { QuickReplyList, QuickReply } from "@/components/QuickReplies";
+import ContactPickerModal from "@/components/modals/ContactPickerModal";
+import LocationModal from "@/components/modals/LocationModal";
+import PollModal from "@/components/modals/PollModal";
+import EventModal from "@/components/modals/EventModal";
+import PaymentModal from "@/components/modals/PaymentModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
