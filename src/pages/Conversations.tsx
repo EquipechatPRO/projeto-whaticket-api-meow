@@ -115,7 +115,7 @@ export default function Conversations() {
 
   const loadMessages = (jid: string) => {
     setSelectedJid(jid);
-    api.getMessages(jid).then(setMessages);
+    api.getMessages(jid).then((res) => setMessages(res.messages));
   };
 
   // Full-text search with debounce
@@ -408,7 +408,7 @@ export default function Conversations() {
         onCreated={(chat) => {
           setChats((prev) => [chat, ...prev]);
           setSelectedJid(chat.jid);
-          api.getMessages(chat.jid).then(setMessages);
+          api.getMessages(chat.jid).then((res) => setMessages(res.messages));
         }}
       />
     </div>
