@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -33,8 +35,8 @@ var (
 	qrChan    <-chan whatsmeow.QRChannelItem
 	connected bool
 	connMu    sync.RWMutex
-	messages  []StoredMessage
-	msgMu     sync.RWMutex
+	msgDB     *sql.DB
+	msgDBMu   sync.RWMutex
 )
 
 // ─── WebSocket Hub ─────────────────────────────────────────
@@ -191,6 +193,81 @@ type StoredMessage struct {
 	MediaURL   string `json:"mediaUrl,omitempty"`
 }
 
+func initMessageDB() {
+	var err error
+	msgDB, err = sql.Open("sqlite3", "file:messages.db?_foreign_keys=on&_journal_mode=WAL")
+	if err != nil {
+		log.Fatalf("Messages DB error: %v", err)
+	}
+	_, err = msgDB.Exec(`CREATE TABLE IF NOT EXISTS messages (
+		id TEXT PRIMARY KEY,
+		jid TEXT NOT NULL,
+		from_me INTEGER NOT NULL DEFAULT 0,
+		text TEXT NOT NULL DEFAULT '',
+		timestamp TEXT NOT NULL,
+		type TEXT NOT NULL DEFAULT 'text',
+		sender_name TEXT NOT NULL DEFAULT '',
+		media_url TEXT NOT NULL DEFAULT ''
+	)`)
+	if err != nil {
+		log.Fatalf("Create messages table error: %v", err)
+	}
+	_, err = msgDB.Exec(`CREATE INDEX IF NOT EXISTS idx_messages_jid ON messages(jid)`)
+	if err != nil {
+		log.Printf("Index creation warning: %v", err)
+	}
+	_, err = msgDB.Exec(`CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)`)
+	if err != nil {
+		log.Printf("Index creation warning: %v", err)
+	}
+	log.Println("✅ Messages DB initialized (SQLite)")
+}
+
+func dbInsertMessage(m StoredMessage) {
+	fromMe := 0
+	if m.FromMe { fromMe = 1 }
+	_, err := msgDB.Exec(`INSERT OR IGNORE INTO messages (id, jid, from_me, text, timestamp, type, sender_name, media_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ID, m.JID, fromMe, m.Text, m.Timestamp, m.Type, m.SenderName, m.MediaURL)
+	if err != nil {
+		log.Printf("DB insert error: %v", err)
+	}
+}
+
+func dbGetMessages(jid string, limit int) []StoredMessage {
+	rows, err := msgDB.Query(`SELECT id, jid, from_me, text, timestamp, type, sender_name, media_url FROM messages WHERE jid = ? ORDER BY timestamp ASC LIMIT ?`, jid, limit)
+	if err != nil {
+		log.Printf("DB query error: %v", err)
+		return []StoredMessage{}
+	}
+	defer rows.Close()
+	return scanMessages(rows)
+}
+
+func dbGetAllMessages() []StoredMessage {
+	rows, err := msgDB.Query(`SELECT id, jid, from_me, text, timestamp, type, sender_name, media_url FROM messages ORDER BY timestamp ASC`)
+	if err != nil {
+		log.Printf("DB query error: %v", err)
+		return []StoredMessage{}
+	}
+	defer rows.Close()
+	return scanMessages(rows)
+}
+
+func scanMessages(rows *sql.Rows) []StoredMessage {
+	var result []StoredMessage
+	for rows.Next() {
+		var m StoredMessage
+		var fromMe int
+		if err := rows.Scan(&m.ID, &m.JID, &fromMe, &m.Text, &m.Timestamp, &m.Type, &m.SenderName, &m.MediaURL); err != nil {
+			continue
+		}
+		m.FromMe = fromMe == 1
+		result = append(result, m)
+	}
+	if result == nil { result = []StoredMessage{} }
+	return result
+}
+
 func main() {
 	port := os.Getenv("API_PORT")
 	if port == "" {
@@ -199,6 +276,9 @@ func main() {
 
 	// Start WebSocket hub
 	go hub.run()
+
+	// Initialize messages DB
+	initMessageDB()
 
 	dbLog := waLog.Stdout("DB", "WARN", true)
 	container, err := sqlstore.New("sqlite3", "file:whatsmeow.db?_foreign_keys=on", dbLog)
@@ -295,6 +375,9 @@ func main() {
 	if client != nil {
 		client.Disconnect()
 	}
+	if msgDB != nil {
+		msgDB.Close()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	srv.Shutdown(ctx)
@@ -336,12 +419,7 @@ func eventHandler(evt interface{}) {
 			msg.Type = "video"
 			msg.Text = t.GetCaption()
 		}
-		msgMu.Lock()
-		messages = append(messages, msg)
-		if len(messages) > 10000 {
-			messages = messages[len(messages)-10000:]
-		}
-		msgMu.Unlock()
+		dbInsertMessage(msg)
 
 		// Broadcast new message to all WS clients
 		broadcastEvent("message", msg)
@@ -505,8 +583,7 @@ func handleSendReaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetChats(w http.ResponseWriter, r *http.Request) {
-	msgMu.RLock()
-	defer msgMu.RUnlock()
+	messages := dbGetAllMessages()
 	chatMap := map[string]map[string]interface{}{}
 	for _, m := range messages {
 		if _, ok := chatMap[m.JID]; !ok {
@@ -527,13 +604,11 @@ func handleGetChats(w http.ResponseWriter, r *http.Request) {
 
 func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	jid := mux.Vars(r)["jid"]
-	msgMu.RLock()
-	defer msgMu.RUnlock()
-	var result []StoredMessage
-	for _, m := range messages {
-		if m.JID == jid { result = append(result, m) }
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 { limit = v }
 	}
-	if result == nil { result = []StoredMessage{} }
+	result := dbGetMessages(jid, limit)
 	jsonOK(w, result)
 }
 
@@ -657,8 +732,7 @@ func handleClose(w http.ResponseWriter, r *http.Request) {
 
 // ─── Stats Endpoint ────────────────────────────────────────
 func handleStats(w http.ResponseWriter, r *http.Request) {
-	msgMu.RLock()
-	defer msgMu.RUnlock()
+	messages := dbGetAllMessages()
 
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
