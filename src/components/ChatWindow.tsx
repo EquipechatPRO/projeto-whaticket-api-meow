@@ -19,6 +19,12 @@ import {
   Info,
   ChevronLeft,
   AlertTriangle,
+  Image,
+  Mic,
+  MicOff,
+  FileAudio,
+  Play,
+  PauseCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
