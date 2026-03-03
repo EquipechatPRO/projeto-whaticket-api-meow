@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   GitBranch, Plus, Search, Play, Pause, Edit2, Trash2, Copy,
-  MoreVertical, Zap, X, Link2, Unlink,
+  MoreVertical, Zap, X, Link2, Unlink, Wifi, WifiOff, Smartphone,
 } from "lucide-react";
 import { useFlowStore, type Flow } from "@/stores/flow-store";
+import { useConnectionStore } from "@/stores/connection-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ const triggerLabels: Record<string, { label: string; color: string }> = {
 export default function Flows() {
   const navigate = useNavigate();
   const { flows, addFlow, deleteFlow, updateFlow, duplicateFlow } = useFlowStore();
+  const { connections } = useConnectionStore();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Flow | null>(null);
@@ -151,15 +153,43 @@ export default function Flows() {
                 </span>
               </div>
 
+              {/* Connection Binding */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  <Smartphone className="w-3 h-3" /> Conexão vinculada
+                </label>
+                <select
+                  value={flow.connectionId || ""}
+                  onChange={(e) => {
+                    const connId = e.target.value || undefined;
+                    const conn = connections.find((c) => c.id === connId);
+                    updateFlow(flow.id, { connectionId: connId });
+                    toast.success(connId ? `Vinculado a "${conn?.name}"` : "Conexão desvinculada");
+                  }}
+                  className="w-full bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Sem conexão</option>
+                  {connections.map((conn) => (
+                    <option key={conn.id} value={conn.id}>
+                      {conn.status === "connected" ? "🟢" : "🔴"} {conn.name} ({conn.phone})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Stats */}
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
                 <span>{flow.nodes.length} nós</span>
                 <span>{flow.edges.length} conexões</span>
-                {flow.connectionId && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <Link2 className="w-3 h-3" /> Vinculado
-                  </span>
-                )}
+                {flow.connectionId && (() => {
+                  const conn = connections.find((c) => c.id === flow.connectionId);
+                  return conn ? (
+                    <span className={cn("flex items-center gap-1", conn.status === "connected" ? "text-primary" : "text-destructive")}>
+                      {conn.status === "connected" ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                      {conn.name}
+                    </span>
+                  ) : null;
+                })()}
               </div>
 
               {/* Actions */}
