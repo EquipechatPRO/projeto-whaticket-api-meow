@@ -3,10 +3,12 @@ import {
   Building2, Users, CreditCard, Search, TrendingUp, Clock, Plus,
   Eye, Ban, Trash2, X, Edit2, CheckCircle2, AlertTriangle, RefreshCw,
   Shield, Mail, Phone, FileText, Power, Package, DollarSign, Zap,
-  BarChart3, MessageSquare, Activity,
+  BarChart3, MessageSquare, Activity, ScrollText, Filter,
 } from "lucide-react";
 import { useCompanyStore, type Company } from "@/stores/company-store";
 import { usePlanStore, type Plan } from "@/stores/plan-store";
+import { useAuditStore, actionLabels, actionColors, type AuditAction } from "@/stores/audit-store";
+import { useAuth } from "@/stores/auth-store";
 import { useTranslation } from "@/i18n/translations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,11 +31,13 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 type ModalMode = "create" | "edit" | "view" | null;
-type ActiveTab = "companies" | "plans" | "reports";
+type ActiveTab = "companies" | "plans" | "reports" | "audit";
 
 export default function SuperAdmin() {
   const { t } = useTranslation();
   const { companies, addCompany, updateCompany, deleteCompany } = useCompanyStore();
+  const { addLog } = useAuditStore();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("companies");
   const [search, setSearch] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
@@ -85,23 +89,35 @@ export default function SuperAdmin() {
 
   const openView = (c: Company) => { setModalMode("view"); setSelectedCompany(c); };
 
+  const logAction = (action: AuditAction, label: string, description: string, targetType: "company" | "plan" | "user" | "system", targetName: string, details?: Record<string, string>) => {
+    addLog({ action, label, description, user: user?.name || "Admin", userEmail: user?.email || "", targetType, targetName, details });
+  };
+
   const handleSave = () => {
     if (!formName.trim() || !formEmail.trim()) { toast.error("Preencha nome e e-mail da empresa"); return; }
     const slug = formSlug.trim() || formName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     if (modalMode === "create") {
       addCompany({ name: formName, slug, email: formEmail, phone: formPhone || undefined, plan: formPlan, status: formStatus, maxAgents: formMaxAgents, agentCount: 0, notes: formNotes || undefined });
+      logAction("company_created", "Empresa criada", `Empresa "${formName}" foi cadastrada com plano ${formPlan}`, "company", formName, { plano: formPlan, email: formEmail });
       toast.success(`Empresa "${formName}" criada com sucesso`);
     } else if (modalMode === "edit" && selectedCompany) {
       updateCompany(selectedCompany.id, { name: formName, slug, email: formEmail, phone: formPhone || undefined, plan: formPlan, status: formStatus, maxAgents: formMaxAgents, notes: formNotes || undefined });
+      logAction("company_updated", "Empresa atualizada", `Empresa "${formName}" foi atualizada`, "company", formName);
       toast.success(`Empresa "${formName}" atualizada`);
     }
     setModalMode(null);
   };
 
-  const handleDelete = (c: Company) => { deleteCompany(c.id); toast.success(`Empresa "${c.name}" removida`); setConfirmDelete(null); };
+  const handleDelete = (c: Company) => {
+    deleteCompany(c.id);
+    logAction("company_deleted", "Empresa excluída", `Empresa "${c.name}" foi excluída permanentemente`, "company", c.name);
+    toast.success(`Empresa "${c.name}" removida`);
+    setConfirmDelete(null);
+  };
   const toggleStatus = (c: Company) => {
     const newStatus = c.status === "suspended" ? "active" : "suspended";
     updateCompany(c.id, { status: newStatus });
+    logAction(newStatus === "suspended" ? "company_suspended" : "company_reactivated", newStatus === "suspended" ? "Empresa suspensa" : "Empresa reativada", `Empresa "${c.name}" foi ${newStatus === "suspended" ? "suspensa" : "reativada"}`, "company", c.name);
     toast.success(`Empresa "${c.name}" ${newStatus === "suspended" ? "suspensa" : "reativada"}`);
   };
 
@@ -159,6 +175,15 @@ export default function SuperAdmin() {
           )}
         >
           <BarChart3 className="w-4 h-4" /> Relatórios
+        </button>
+        <button
+          onClick={() => setActiveTab("audit")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            activeTab === "audit" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ScrollText className="w-4 h-4" /> Auditoria
         </button>
       </div>
 
@@ -262,6 +287,8 @@ export default function SuperAdmin() {
       {activeTab === "plans" && <PlansTab />}
 
       {activeTab === "reports" && <ReportsTab companies={companies} />}
+
+      {activeTab === "audit" && <AuditTab />}
 
       {/* Create/Edit Modal */}
       {(modalMode === "create" || modalMode === "edit") && (
@@ -826,6 +853,128 @@ function ReportsTab({ companies }: { companies: Company[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Audit Tab ─── */
+function AuditTab() {
+  const { logs, clearLogs } = useAuditStore();
+  const [search, setSearch] = useState("");
+  const [filterAction, setFilterAction] = useState("all");
+  const [filterTarget, setFilterTarget] = useState("all");
+
+  const filtered = logs.filter((l) => {
+    const matchSearch = l.description.toLowerCase().includes(search.toLowerCase()) || l.targetName.toLowerCase().includes(search.toLowerCase()) || l.user.toLowerCase().includes(search.toLowerCase());
+    const matchAction = filterAction === "all" || l.action === filterAction;
+    const matchTarget = filterTarget === "all" || l.targetType === filterTarget;
+    return matchSearch && matchAction && matchTarget;
+  });
+
+  const formatDate = (ts: string) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const actionIconMap: Record<string, typeof Building2> = {
+    company_created: Plus,
+    company_updated: Edit2,
+    company_deleted: Trash2,
+    company_suspended: Ban,
+    company_reactivated: Power,
+    plan_created: Plus,
+    plan_updated: Edit2,
+    plan_deleted: Trash2,
+    plan_activated: Power,
+    plan_deactivated: Ban,
+    user_login: Users,
+    user_logout: Users,
+    settings_changed: RefreshCw,
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{filtered.length} de {logs.length} registros</p>
+        <button onClick={() => { if (confirm("Limpar todos os logs de auditoria?")) { clearLogs(); toast.success("Logs limpos"); } }} className="text-xs text-destructive hover:underline">
+          Limpar logs
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex-1 max-w-sm">
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+            <Search className="w-4 h-4 text-muted-foreground" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar nos logs..."
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none" />
+          </div>
+        </div>
+        <select value={filterTarget} onChange={(e) => setFilterTarget(e.target.value)} className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground outline-none">
+          <option value="all">Todos os tipos</option>
+          <option value="company">Empresa</option>
+          <option value="plan">Plano</option>
+          <option value="user">Usuário</option>
+          <option value="system">Sistema</option>
+        </select>
+        <select value={filterAction} onChange={(e) => setFilterAction(e.target.value)} className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground outline-none">
+          <option value="all">Todas as ações</option>
+          <option value="company_created">Empresa criada</option>
+          <option value="company_updated">Empresa atualizada</option>
+          <option value="company_deleted">Empresa excluída</option>
+          <option value="company_suspended">Empresa suspensa</option>
+          <option value="company_reactivated">Empresa reativada</option>
+          <option value="plan_created">Plano criado</option>
+          <option value="plan_updated">Plano atualizado</option>
+          <option value="plan_deleted">Plano excluído</option>
+          <option value="user_login">Login</option>
+        </select>
+      </div>
+
+      {/* Timeline */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <ScrollText className="w-8 h-8 mb-3 opacity-30" />
+            <p className="text-sm">Nenhum log encontrado</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filtered.map((log) => {
+              const Icon = actionIconMap[log.action] || FileText;
+              const color = actionColors[log.action] || "text-muted-foreground";
+              return (
+                <div key={log.id} className="flex items-start gap-3 px-4 py-3 hover:bg-accent/30 transition-colors">
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", color.replace("text-", "bg-").replace("foreground", "foreground/10"))}>
+                    <Icon className={cn("w-4 h-4", color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn("text-xs font-semibold", color)}>{actionLabels[log.action]}</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{log.targetType}</span>
+                    </div>
+                    <p className="text-sm text-foreground mt-0.5">{log.description}</p>
+                    {log.details && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {Object.entries(log.details).map(([k, v]) => (
+                          <span key={k} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                            {k}: {v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{log.user}</span>
+                      <span>{log.userEmail}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(log.timestamp)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
