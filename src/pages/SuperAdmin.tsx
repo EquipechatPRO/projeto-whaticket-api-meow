@@ -38,6 +38,7 @@ export default function SuperAdmin() {
   const { companies, addCompany, updateCompany, deleteCompany } = useCompanyStore();
   const { addLog } = useAuditStore();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<ActiveTab>("companies");
   const [search, setSearch] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
