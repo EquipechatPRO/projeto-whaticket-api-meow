@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Chat, Message, api } from "@/services/api";
 import ContactPanel from "@/components/ContactPanel";
+import { QuickReplyList, QuickReply } from "@/components/QuickReplies";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -64,6 +65,8 @@ export default function ChatWindow({
   const [recordingTime, setRecordingTime] = useState(0);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [imageCaption, setImageCaption] = useState("");
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [quickReplyFilter, setQuickReplyFilter] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
@@ -563,14 +566,44 @@ export default function ChatWindow({
               <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground">
                 <Smile className="w-4 h-4" />
               </button>
-              <input
-                type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-                placeholder="Digite uma mensagem..."
-                className="flex-1 bg-secondary rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
-              />
+              <div className="flex-1 relative">
+                {showQuickReplies && (
+                  <QuickReplyList
+                    filter={quickReplyFilter}
+                    onSelect={(r: QuickReply) => {
+                      setText(r.text);
+                      setShowQuickReplies(false);
+                      setQuickReplyFilter("");
+                    }}
+                    onClose={() => { setShowQuickReplies(false); setQuickReplyFilter(""); }}
+                  />
+                )}
+                <input
+                  type="text"
+                  value={text}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setText(v);
+                    if (v.startsWith("/")) {
+                      setShowQuickReplies(true);
+                      setQuickReplyFilter(v.slice(1));
+                    } else {
+                      setShowQuickReplies(false);
+                      setQuickReplyFilter("");
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && showQuickReplies) {
+                      setShowQuickReplies(false);
+                      setQuickReplyFilter("");
+                      return;
+                    }
+                    if (e.key === "Enter" && !e.shiftKey && !showQuickReplies) handleSend();
+                  }}
+                  placeholder="Digite / para respostas rápidas..."
+                  className="w-full bg-secondary rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
               {text.trim() ? (
                 <button
                   onClick={handleSend}
