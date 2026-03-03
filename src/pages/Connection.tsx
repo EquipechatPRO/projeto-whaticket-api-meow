@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Wifi, WifiOff, QrCode, RefreshCw, Plus, X, Trash2, Edit2,
   Send, ArrowDownLeft, Copy, RotateCcw, Loader2, Webhook, Bot,
-  MessageSquare, GitBranch,
+  MessageSquare, GitBranch, Clock,
 } from "lucide-react";
 
 const generateToken = () => {
@@ -15,7 +15,7 @@ const generateToken = () => {
   return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 };
 
-type EditTab = "geral" | "integracoes" | "mensagens" | "chatbot" | "fluxo";
+type EditTab = "geral" | "integracoes" | "mensagens" | "chatbot" | "fluxo" | "horarios";
 
 const WEBHOOK_EVENT_OPTIONS = [
   "message.received", "message.sent", "message.delivered", "message.read",
@@ -341,6 +341,117 @@ function TabFluxo({ form, setForm }: { form: Partial<WhatsAppConnection>; setFor
           <p className="text-[11px] text-amber-700 dark:text-amber-400">
             ⚠️ Nenhum fluxo cadastrado. Crie fluxos na página <strong>Construtor de Fluxos</strong> para vincular aqui.
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Horários de Atendimento ──────────────────────────
+const DAY_LABELS: Record<string, string> = {
+  monday: "Segunda-feira",
+  tuesday: "Terça-feira",
+  wednesday: "Quarta-feira",
+  thursday: "Quinta-feira",
+  friday: "Sexta-feira",
+  saturday: "Sábado",
+  sunday: "Domingo",
+};
+const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+function TabHorarios({ form, setForm }: { form: Partial<WhatsAppConnection>; setForm: React.Dispatch<React.SetStateAction<Partial<WhatsAppConnection>>> }) {
+  const hours = form.businessHours || {};
+
+  const updateDay = (day: string, field: string, value: any) => {
+    setForm(f => ({
+      ...f,
+      businessHours: {
+        ...f.businessHours,
+        [day]: { ...(f.businessHours?.[day] || { enabled: false, start: "08:00", end: "18:00" }), [field]: value },
+      },
+    }));
+  };
+
+  const applyToAll = (day: string) => {
+    const src = hours[day];
+    if (!src) return;
+    const updated: typeof hours = {};
+    DAY_ORDER.forEach(d => { updated[d] = { ...src }; });
+    setForm(f => ({ ...f, businessHours: updated }));
+    toast.success("Horário aplicado a todos os dias");
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-primary" />
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Horários de Atendimento</h3>
+            <p className="text-[11px] text-muted-foreground">Defina quando o atendimento está disponível. Fora destes horários, a mensagem de ausência será ativada.</p>
+          </div>
+        </div>
+        <Toggle
+          enabled={!!form.businessHoursEnabled}
+          onToggle={() => setForm(f => ({ ...f, businessHoursEnabled: !f.businessHoursEnabled }))}
+        />
+      </div>
+
+      {form.businessHoursEnabled && (
+        <div className="space-y-2">
+          {DAY_ORDER.map(day => {
+            const d = hours[day] || { enabled: false, start: "08:00", end: "18:00" };
+            return (
+              <div key={day} className={cn(
+                "flex items-center gap-3 rounded-xl p-3 border transition-colors",
+                d.enabled ? "bg-secondary/50 border-border" : "bg-muted/30 border-transparent"
+              )}>
+                <div className="w-7">
+                  <input
+                    type="checkbox"
+                    checked={d.enabled}
+                    onChange={() => updateDay(day, "enabled", !d.enabled)}
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                  />
+                </div>
+                <span className={cn("text-sm font-medium w-32", d.enabled ? "text-foreground" : "text-muted-foreground")}>
+                  {DAY_LABELS[day]}
+                </span>
+                {d.enabled ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="time"
+                      value={d.start}
+                      onChange={(e) => updateDay(day, "start", e.target.value)}
+                      className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <span className="text-muted-foreground text-xs">até</span>
+                    <input
+                      type="time"
+                      value={d.end}
+                      onChange={(e) => updateDay(day, "end", e.target.value)}
+                      className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={() => applyToAll(day)}
+                      className="ml-auto text-[10px] text-primary hover:underline whitespace-nowrap"
+                      title="Aplicar este horário a todos os dias"
+                    >
+                      Aplicar a todos
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">Fechado</span>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="p-3 bg-blue-500/10 rounded-lg mt-3">
+            <p className="text-[11px] text-blue-700 dark:text-blue-400">
+              💡 Fora dos horários configurados, a <strong>Mensagem de Ausência</strong> será enviada automaticamente e o <strong>Fluxo Fora do Horário</strong> será executado (se configurados).
+            </p>
+          </div>
         </div>
       )}
     </div>
