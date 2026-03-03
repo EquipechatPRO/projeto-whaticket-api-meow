@@ -1,156 +1,57 @@
 import { useState } from "react";
-import { Check, X, Zap, Crown, Building2, Rocket, ArrowRight, MessageCircle } from "lucide-react";
+import { Check, X, Zap, Crown, Building2, Rocket, ArrowRight, MessageCircle, Users, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth-store";
+import { usePlanStore, type Plan as StorePlan } from "@/stores/plan-store";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 type BillingCycle = "monthly" | "yearly";
 
-interface Plan {
-  id: string;
-  name: string;
-  icon: React.ElementType;
-  description: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  popular?: boolean;
-  features: Record<string, string | boolean>;
-  cta: string;
-  color: string;
-}
-
-const featureLabels: Record<string, string> = {
-  agents: "Atendentes",
-  conversations: "Conversas/mês",
-  queues: "Filas de atendimento",
-  quickReplies: "Respostas rápidas",
-  chatbot: "Chatbot automático",
-  api: "Acesso à API",
-  reports: "Relatórios avançados",
-  multiChannel: "Multi-canal",
-  customBranding: "Marca personalizada",
-  prioritySupport: "Suporte prioritário",
-  sla: "SLA garantido",
-  dedicatedManager: "Gerente dedicado",
+const iconMap: Record<string, React.ElementType> = {
+  free: Zap,
+  starter: Rocket,
+  professional: Crown,
+  enterprise: Building2,
 };
 
-const plans: Plan[] = [
-  {
-    id: "free",
-    name: "Free",
-    icon: Zap,
-    description: "Para testar a plataforma",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    color: "border-border",
-    cta: "Começar grátis",
-    features: {
-      agents: "2",
-      conversations: "100",
-      queues: "1",
-      quickReplies: "10",
-      chatbot: false,
-      api: false,
-      reports: false,
-      multiChannel: false,
-      customBranding: false,
-      prioritySupport: false,
-      sla: false,
-      dedicatedManager: false,
-    },
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    icon: Rocket,
-    description: "Para pequenas equipes",
-    monthlyPrice: 97,
-    yearlyPrice: 79,
-    color: "border-info",
-    cta: "Assinar Starter",
-    features: {
-      agents: "5",
-      conversations: "1.000",
-      queues: "3",
-      quickReplies: "50",
-      chatbot: true,
-      api: false,
-      reports: false,
-      multiChannel: false,
-      customBranding: false,
-      prioritySupport: false,
-      sla: false,
-      dedicatedManager: false,
-    },
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    icon: Crown,
-    description: "Para empresas em crescimento",
-    monthlyPrice: 197,
-    yearlyPrice: 167,
-    popular: true,
-    color: "border-primary",
-    cta: "Assinar Professional",
-    features: {
-      agents: "20",
-      conversations: "10.000",
-      queues: "10",
-      quickReplies: "Ilimitado",
-      chatbot: true,
-      api: true,
-      reports: true,
-      multiChannel: true,
-      customBranding: true,
-      prioritySupport: false,
-      sla: false,
-      dedicatedManager: false,
-    },
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    icon: Building2,
-    description: "Para grandes operações",
-    monthlyPrice: 497,
-    yearlyPrice: 417,
-    color: "border-warning",
-    cta: "Falar com vendas",
-    features: {
-      agents: "Ilimitado",
-      conversations: "Ilimitado",
-      queues: "Ilimitado",
-      quickReplies: "Ilimitado",
-      chatbot: true,
-      api: true,
-      reports: true,
-      multiChannel: true,
-      customBranding: true,
-      prioritySupport: true,
-      sla: true,
-      dedicatedManager: true,
-    },
-  },
-];
+const colorMap: Record<string, string> = {
+  free: "border-border",
+  starter: "border-info",
+  professional: "border-primary",
+  enterprise: "border-warning",
+};
+
+function mapStorePlan(p: StorePlan, index: number) {
+  const icon = iconMap[p.slug] || Package;
+  const color = colorMap[p.slug] || "border-border";
+  const popular = p.slug === "professional" || index === 2;
+  return { ...p, icon, color, popular };
+}
 
 export default function Plans() {
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const { user } = useAuth();
+  const { plans: storePlans } = usePlanStore();
   const currentPlan = user?.role === "super_admin" ? null : "free";
 
-  const handleSubscribe = (plan: Plan) => {
-    if (plan.id === "free") {
+  const activePlans = storePlans.filter((p) => p.isActive);
+  const displayPlans = activePlans.map(mapStorePlan);
+
+  const handleSubscribe = (plan: StorePlan) => {
+    if (plan.slug === "free" || plan.monthlyPrice === 0) {
       toast.info("Você já está no plano Free");
       return;
     }
-    if (plan.id === "enterprise") {
+    if (plan.slug === "enterprise") {
       toast.info("Nossa equipe entrará em contato em breve!");
       return;
     }
     toast.info(`Integração de pagamento será configurada em breve para o plano ${plan.name}`);
   };
+
+  const fmt = (v: number) => (v < 0 ? "Ilimitado" : v.toLocaleString("pt-BR"));
+  const yearlyMonthly = (p: StorePlan) => Math.round(p.yearlyPrice / 12);
 
   return (
     <div className="min-h-screen bg-background">
@@ -164,13 +65,9 @@ export default function Plans() {
             <span className="font-bold text-foreground text-sm">WhatsPanel</span>
           </Link>
           {user ? (
-            <Link to="/" className="text-sm text-primary hover:underline">
-              Voltar ao painel
-            </Link>
+            <Link to="/" className="text-sm text-primary hover:underline">Voltar ao painel</Link>
           ) : (
-            <Link to="/login" className="text-sm text-primary hover:underline">
-              Fazer login
-            </Link>
+            <Link to="/login" className="text-sm text-primary hover:underline">Fazer login</Link>
           )}
         </div>
       </div>
@@ -191,9 +88,7 @@ export default function Plans() {
               onClick={() => setBilling("monthly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                billing === "monthly"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                billing === "monthly" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
               Mensal
@@ -202,9 +97,7 @@ export default function Plans() {
               onClick={() => setBilling("yearly")}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors relative",
-                billing === "yearly"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                billing === "yearly" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
               Anual
@@ -216,10 +109,15 @@ export default function Plans() {
         </div>
 
         {/* Plan Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
-          {plans.map((plan) => {
-            const price = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-            const isCurrent = plan.id === currentPlan;
+        <div className={cn(
+          "grid grid-cols-1 gap-5 mb-16",
+          displayPlans.length <= 2 ? "md:grid-cols-2 max-w-3xl mx-auto" :
+          displayPlans.length === 3 ? "md:grid-cols-3 max-w-5xl mx-auto" :
+          "md:grid-cols-2 lg:grid-cols-4"
+        )}>
+          {displayPlans.map((plan) => {
+            const price = billing === "monthly" ? plan.monthlyPrice : yearlyMonthly(plan);
+            const isCurrent = plan.slug === currentPlan;
 
             return (
               <div
@@ -236,15 +134,11 @@ export default function Plans() {
                 )}
 
                 <div className="flex items-center gap-2 mb-3">
-                  <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center",
-                    plan.popular ? "bg-primary/10" : "bg-muted"
-                  )}>
+                  <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", plan.popular ? "bg-primary/10" : "bg-muted")}>
                     <plan.icon className={cn("w-4 h-4", plan.popular ? "text-primary" : "text-muted-foreground")} />
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground">{plan.name}</h3>
-                    <p className="text-xs text-muted-foreground">{plan.description}</p>
                   </div>
                 </div>
 
@@ -257,7 +151,7 @@ export default function Plans() {
                   </div>
                   {billing === "yearly" && price > 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      R${price * 12}/ano (economia de R${(plan.monthlyPrice - price) * 12})
+                      R${plan.yearlyPrice.toLocaleString("pt-BR")}/ano (economia de R${((plan.monthlyPrice * 12) - plan.yearlyPrice).toLocaleString("pt-BR")})
                     </p>
                   )}
                 </div>
@@ -274,24 +168,32 @@ export default function Plans() {
                         : "bg-secondary text-foreground hover:bg-accent"
                   )}
                 >
-                  {isCurrent ? "Plano atual" : plan.cta}
+                  {isCurrent ? "Plano atual" : price === 0 ? "Começar grátis" : `Assinar ${plan.name}`}
                   {!isCurrent && <ArrowRight className="w-4 h-4" />}
                 </button>
 
-                <div className="space-y-2.5 flex-1">
-                  {Object.entries(plan.features).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2 text-sm">
-                      {value === false ? (
-                        <X className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                      )}
-                      <span className={cn(value === false ? "text-muted-foreground/50" : "text-foreground")}>
-                        {featureLabels[key]}
-                        {typeof value === "string" && (
-                          <span className="text-muted-foreground ml-1">({value})</span>
-                        )}
-                      </span>
+                {/* Limits */}
+                <div className="space-y-2 mb-4 pb-4 border-b border-border">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Atendentes</span>
+                    <span className="font-medium text-foreground">{fmt(plan.maxAgents)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5"><Package className="w-3.5 h-3.5" />Filas</span>
+                    <span className="font-medium text-foreground">{fmt(plan.maxQueues)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" />Contatos</span>
+                    <span className="font-medium text-foreground">{fmt(plan.maxContacts)}</span>
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div className="space-y-2 flex-1">
+                  {plan.features.map((feature, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="text-foreground">{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -309,32 +211,52 @@ export default function Plans() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3 w-1/5">Feature</th>
-                  {plans.map((p) => (
-                    <th key={p.id} className="text-center text-xs font-medium text-muted-foreground px-4 py-3">
-                      {p.name}
-                    </th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3 w-1/5">Recurso</th>
+                  {displayPlans.map((p) => (
+                    <th key={p.id} className="text-center text-xs font-medium text-muted-foreground px-4 py-3">{p.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(featureLabels).map(([key, label]) => (
-                  <tr key={key} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-sm text-foreground">{label}</td>
-                    {plans.map((p) => {
-                      const val = p.features[key];
-                      return (
-                        <td key={p.id} className="px-4 py-3 text-center">
-                          {val === false ? (
-                            <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
-                          ) : val === true ? (
-                            <Check className="w-4 h-4 text-primary mx-auto" />
-                          ) : (
-                            <span className="text-sm font-medium text-foreground">{val}</span>
-                          )}
-                        </td>
-                      );
-                    })}
+                <tr className="border-b border-border">
+                  <td className="px-4 py-3 text-sm text-foreground">Preço mensal</td>
+                  {displayPlans.map((p) => (
+                    <td key={p.id} className="px-4 py-3 text-center text-sm font-medium text-foreground">
+                      {p.monthlyPrice === 0 ? "Grátis" : `R$${p.monthlyPrice}`}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-4 py-3 text-sm text-foreground">Atendentes</td>
+                  {displayPlans.map((p) => (
+                    <td key={p.id} className="px-4 py-3 text-center text-sm font-medium text-foreground">{fmt(p.maxAgents)}</td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-4 py-3 text-sm text-foreground">Filas</td>
+                  {displayPlans.map((p) => (
+                    <td key={p.id} className="px-4 py-3 text-center text-sm font-medium text-foreground">{fmt(p.maxQueues)}</td>
+                  ))}
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-4 py-3 text-sm text-foreground">Contatos</td>
+                  {displayPlans.map((p) => (
+                    <td key={p.id} className="px-4 py-3 text-center text-sm font-medium text-foreground">{fmt(p.maxContacts)}</td>
+                  ))}
+                </tr>
+                {/* Feature rows - collect all unique features */}
+                {Array.from(new Set(displayPlans.flatMap((p) => p.features))).map((feat) => (
+                  <tr key={feat} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-sm text-foreground">{feat}</td>
+                    {displayPlans.map((p) => (
+                      <td key={p.id} className="px-4 py-3 text-center">
+                        {p.features.includes(feat) ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -346,9 +268,7 @@ export default function Plans() {
         <div className="mt-12 text-center">
           <p className="text-muted-foreground text-sm">
             Dúvidas? Entre em contato pelo{" "}
-            <button onClick={() => toast.info("Suporte em breve")} className="text-primary hover:underline">
-              suporte
-            </button>{" "}
+            <button onClick={() => toast.info("Suporte em breve")} className="text-primary hover:underline">suporte</button>{" "}
             ou envie um e-mail para contato@whatspanel.com
           </p>
         </div>
