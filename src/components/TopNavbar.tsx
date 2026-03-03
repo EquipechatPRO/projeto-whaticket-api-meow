@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -9,26 +9,51 @@ import {
   Bell,
   Monitor,
   Moon,
-  Menu,
   MessageCircle,
   Zap,
+  LogOut,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useWSStatus } from "@/stores/ws-status-store";
-
-const navLinks = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/conversations", icon: MessageSquare, label: "Atendimentos" },
-  { to: "/contacts", icon: Bot, label: "Contatos" },
-  { to: "/queues", icon: Shield, label: "Filas" },
-  { to: "/quick-replies", icon: Zap, label: "Respostas" },
-  { to: "/connection", icon: Settings, label: "Configurações" },
-];
+import { useAuth } from "@/stores/auth-store";
+import { toast } from "sonner";
 
 export default function TopNavbar() {
   const [searchText, setSearchText] = useState("");
   const wsConnected = useWSStatus((s) => s.isConnected);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const isSuperAdmin = user?.role === "super_admin";
+
+  const navLinks = isSuperAdmin
+    ? [
+        { to: "/", icon: LayoutDashboard, label: "Empresas" },
+        { to: "/connection", icon: Settings, label: "Configurações" },
+      ]
+    : [
+        { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+        { to: "/conversations", icon: MessageSquare, label: "Atendimentos" },
+        { to: "/contacts", icon: Bot, label: "Contatos" },
+        { to: "/queues", icon: Shield, label: "Filas" },
+        { to: "/quick-replies", icon: Zap, label: "Respostas" },
+        { to: "/connection", icon: Settings, label: "Configurações" },
+      ];
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logout realizado");
+    navigate("/login");
+  };
+
+  const roleLabels: Record<string, string> = {
+    super_admin: "Super Admin",
+    company_admin: "Admin",
+    supervisor: "Supervisor",
+    agent: "Atendente",
+  };
 
   return (
     <header className="h-14 bg-navbar border-b border-navbar-border flex items-center px-4 gap-3 shrink-0 z-50">
@@ -78,6 +103,14 @@ export default function TopNavbar() {
 
       {/* Right Icons */}
       <div className="flex items-center gap-1 ml-3 shrink-0">
+        {/* Company badge */}
+        {user?.companyName && (
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent text-xs text-foreground mr-1">
+            <Building2 className="w-3 h-3" />
+            {user.companyName}
+          </div>
+        )}
+
         <div
           className={cn(
             "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold mr-1",
@@ -96,14 +129,23 @@ export default function TopNavbar() {
             2
           </span>
         </button>
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground transition-colors">
-          <Monitor className="w-4 h-4" />
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground transition-colors">
-          <Moon className="w-4 h-4" />
-        </button>
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center ml-1 cursor-pointer">
-          <span className="text-xs font-bold text-primary">W</span>
+
+        {/* User menu */}
+        <div className="flex items-center gap-2 ml-1 pl-2 border-l border-border">
+          <div className="hidden sm:block text-right">
+            <p className="text-xs font-medium text-foreground leading-tight">{user?.name}</p>
+            <p className="text-[10px] text-muted-foreground">{roleLabels[user?.role || "agent"]}</p>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center cursor-pointer">
+            <span className="text-xs font-bold text-primary">{user?.name?.charAt(0) || "U"}</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+            title="Sair"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>
