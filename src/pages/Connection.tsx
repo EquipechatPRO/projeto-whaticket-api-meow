@@ -746,6 +746,7 @@ export default function Connection() {
                 { key: "mensagens", label: "Mensagens" },
                 { key: "chatbot", label: "Chatbot" },
                 { key: "fluxo", label: "Fluxo Padrão" },
+                { key: "horarios", label: "Horários" },
               ] as { key: EditTab; label: string }[]).map((tab) => (
                 <button
                   key={tab.key}
