@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useConnectionStore } from "@/stores/connection-store";
+import { useWSStatus } from "@/stores/ws-status-store";
 import { Message } from "@/services/api";
 import { toast } from "sonner";
 
@@ -36,6 +37,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
       ws.onopen = () => {
         setIsConnected(true);
+        useWSStatus.getState().setConnected(true);
+        console.log("📡 WebSocket conectado:", wsUrl);
         console.log("📡 WebSocket conectado:", wsUrl);
       };
 
@@ -66,6 +69,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
       ws.onclose = () => {
         setIsConnected(false);
+        useWSStatus.getState().setConnected(false);
         console.log("📡 WebSocket desconectado, reconectando em 3s...");
         reconnectTimer.current = setTimeout(connect, 3000);
       };
