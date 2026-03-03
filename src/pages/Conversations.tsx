@@ -23,6 +23,15 @@ import {
 type MainTab = "inbox" | "paused" | "resolved" | "search";
 type SubTab = "attending" | "waiting" | "bot" | "groups";
 
+interface SearchResult {
+  id: string;
+  jid: string;
+  text: string;
+  timestamp: string;
+  senderName?: string;
+  fromMe: boolean;
+}
+
 export default function Conversations() {
   const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -34,6 +43,8 @@ export default function Conversations() {
   const [selectedSector, setSelectedSector] = useState("all");
   const [typingJids, setTypingJids] = useState<Record<string, string>>({});
   const [showNewChat, setShowNewChat] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // WebSocket real-time updates
   const { isConnected: wsConnected } = useWebSocket({
