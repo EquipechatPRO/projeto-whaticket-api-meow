@@ -265,6 +265,9 @@ func main() {
 	r.HandleFunc("/api/presence", handleSetPresence).Methods("POST")
 	r.HandleFunc("/api/webhook", handleWebhook).Methods("GET", "POST")
 
+	// Estatísticas
+	r.HandleFunc("/api/stats", handleStats).Methods("GET")
+
 	// Filas
 	r.HandleFunc("/api/transfer", handleTransfer).Methods("POST")
 	r.HandleFunc("/api/close", handleClose).Methods("POST")
@@ -650,4 +653,173 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 
 func handleClose(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]bool{"success": true})
+}
+
+// ─── Stats Endpoint ────────────────────────────────────────
+func handleStats(w http.ResponseWriter, r *http.Request) {
+	msgMu.RLock()
+	defer msgMu.RUnlock()
+
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	weekStart := todayStart.AddDate(0, 0, -int(now.Weekday()))
+
+	totalMessages := len(messages)
+	var sentToday, receivedToday, sentWeek, receivedWeek int
+	chatSet := map[string]bool{}
+	groupSet := map[string]bool{}
+
+	// Track response times: for each incoming msg, find the next outgoing in same JID
+	type msgPair struct{ received, replied time.Time }
+	var responseTimes []time.Duration
+
+	// Group messages by JID for response time calculation
+	jidMessages := map[string][]StoredMessage{}
+	hourlyVolume := map[int]map[string]int{} // hour -> {sent, received}
+	dailyVolume := map[string]map[string]int{} // date -> {sent, received}
+
+	for i := 0; i < 24; i++ {
+		hourlyVolume[i] = map[string]int{"sent": 0, "received": 0}
+	}
+
+	for _, m := range messages {
+		ts, err := time.Parse(time.RFC3339, m.Timestamp)
+		if err != nil {
+			continue
+		}
+
+		isGroup := len(m.JID) > 20
+		if isGroup {
+			groupSet[m.JID] = true
+		} else {
+			chatSet[m.JID] = true
+		}
+
+		jidMessages[m.JID] = append(jidMessages[m.JID], m)
+
+		// Today stats
+		if ts.After(todayStart) {
+			h := ts.Hour()
+			if m.FromMe {
+				sentToday++
+				hourlyVolume[h]["sent"]++
+			} else {
+				receivedToday++
+				hourlyVolume[h]["received"]++
+			}
+		}
+
+		// Week stats
+		if ts.After(weekStart) {
+			dateKey := ts.Format("2006-01-02")
+			if dailyVolume[dateKey] == nil {
+				dailyVolume[dateKey] = map[string]int{"sent": 0, "received": 0}
+			}
+			if m.FromMe {
+				sentWeek++
+				dailyVolume[dateKey]["sent"]++
+			} else {
+				receivedWeek++
+				dailyVolume[dateKey]["received"]++
+			}
+		}
+	}
+
+	// Calculate average response time per JID
+	for _, msgs := range jidMessages {
+		for i := 0; i < len(msgs)-1; i++ {
+			if !msgs[i].FromMe {
+				// Find the next outgoing message as reply
+				for j := i + 1; j < len(msgs); j++ {
+					if msgs[j].FromMe {
+						t1, e1 := time.Parse(time.RFC3339, msgs[i].Timestamp)
+						t2, e2 := time.Parse(time.RFC3339, msgs[j].Timestamp)
+						if e1 == nil && e2 == nil {
+							diff := t2.Sub(t1)
+							if diff > 0 && diff < 24*time.Hour {
+								responseTimes = append(responseTimes, diff)
+							}
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	avgResponseMs := int64(0)
+	if len(responseTimes) > 0 {
+		var total int64
+		for _, d := range responseTimes {
+			total += d.Milliseconds()
+		}
+		avgResponseMs = total / int64(len(responseTimes))
+	}
+
+	// Build hourly array
+	hourlyArr := make([]map[string]interface{}, 24)
+	for i := 0; i < 24; i++ {
+		hourlyArr[i] = map[string]interface{}{
+			"hour":     fmt.Sprintf("%02dh", i),
+			"enviadas": hourlyVolume[i]["sent"],
+			"recebidas": hourlyVolume[i]["received"],
+		}
+	}
+
+	// Build daily array (last 7 days)
+	dailyArr := make([]map[string]interface{}, 0)
+	for d := 6; d >= 0; d-- {
+		day := todayStart.AddDate(0, 0, -d)
+		dateKey := day.Format("2006-01-02")
+		weekday := day.Weekday().String()[:3]
+		sent := 0
+		received := 0
+		if dv, ok := dailyVolume[dateKey]; ok {
+			sent = dv["sent"]
+			received = dv["received"]
+		}
+		dailyArr = append(dailyArr, map[string]interface{}{
+			"date":      dateKey,
+			"day":       weekday,
+			"enviadas":  sent,
+			"recebidas": received,
+			"total":     sent + received,
+		})
+	}
+
+	stats := map[string]interface{}{
+		"totalMessages":     totalMessages,
+		"sentToday":         sentToday,
+		"receivedToday":     receivedToday,
+		"sentWeek":          sentWeek,
+		"receivedWeek":      receivedWeek,
+		"totalChats":        len(chatSet),
+		"totalGroups":       len(groupSet),
+		"avgResponseTimeMs": avgResponseMs,
+		"avgResponseTime":   formatDuration(avgResponseMs),
+		"hourlyVolume":      hourlyArr,
+		"dailyVolume":       dailyArr,
+		"responseSamples":   len(responseTimes),
+		"timestamp":         now.Format(time.RFC3339),
+	}
+
+	jsonOK(w, stats)
+}
+
+func formatDuration(ms int64) string {
+	if ms <= 0 {
+		return "—"
+	}
+	s := ms / 1000
+	if s < 60 {
+		return fmt.Sprintf("%ds", s)
+	}
+	m := s / 60
+	s = s % 60
+	if m < 60 {
+		return fmt.Sprintf("%dm %ds", m, s)
+	}
+	h := m / 60
+	m = m % 60
+	return fmt.Sprintf("%dh %dm", h, m)
 }

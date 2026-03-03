@@ -78,6 +78,9 @@ export const api = {
   deleteMessage: (jid: string, messageId: string) =>
     request<{ success: boolean }>("/api/messages/delete", { method: "POST", body: JSON.stringify({ jid, message_id: messageId }) }),
 
+  // Estatísticas
+  getStats: () => request<DashboardStats>("/api/stats"),
+
   // Filas de atendimento (gerenciado no frontend)
   transferChat: (jid: string, toUser: string) =>
     request<{ success: boolean }>("/api/transfer", { method: "POST", body: JSON.stringify({ jid, to_user: toUser }) }),
@@ -119,6 +122,22 @@ export interface Contact {
   pushName: string;
   phone: string;
   avatar?: string;
+}
+
+export interface DashboardStats {
+  totalMessages: number;
+  sentToday: number;
+  receivedToday: number;
+  sentWeek: number;
+  receivedWeek: number;
+  totalChats: number;
+  totalGroups: number;
+  avgResponseTimeMs: number;
+  avgResponseTime: string;
+  hourlyVolume: { hour: string; enviadas: number; recebidas: number }[];
+  dailyVolume: { date: string; day: string; enviadas: number; recebidas: number; total: number }[];
+  responseSamples: number;
+  timestamp: string;
 }
 
 export interface Group {
