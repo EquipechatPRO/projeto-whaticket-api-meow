@@ -21,12 +21,9 @@ export default function NodeConfigPanel({ node, onUpdate, onClose }: Props) {
 
   const handleCreateQueue = () => {
     if (!newQueueName.trim()) return;
-    addQueue(newQueueName.trim());
-    const created = useQueueStore.getState().queues;
-    const newest = created[created.length - 1];
-    if (newest) {
-      update({ queueId: newest.id, queueName: newest.name });
-    }
+    const newQueue = { id: `q-${Date.now()}`, name: newQueueName.trim(), color: "210 80% 50%", users: [] };
+    addQueue(newQueue);
+    update({ queueId: newQueue.id, queueName: newQueue.name });
     setNewQueueName("");
     setShowNewQueue(false);
   };
