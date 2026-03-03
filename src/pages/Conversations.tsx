@@ -430,7 +430,7 @@ export default function Conversations() {
         onCreated={(chat) => {
           setChats((prev) => [chat, ...prev]);
           setSelectedJid(chat.jid);
-          api.getMessages(chat.jid).then((res) => setMessages(res.messages));
+          api.getMessages(chat.jid, 50, 0).then((res) => { setMessages(res.messages); setTotalMessages(res.total); });
         }}
       />
     </div>
