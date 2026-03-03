@@ -28,6 +28,16 @@ import {
   Play,
   PauseCircle,
   Download,
+  Camera,
+  Video,
+  Contact,
+  BarChart3,
+  CalendarDays,
+  Sticker,
+  Zap,
+  DollarSign,
+  CreditCard,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
