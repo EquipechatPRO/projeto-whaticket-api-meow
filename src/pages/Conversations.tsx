@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
 import { api, Chat, Message } from "@/services/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
@@ -23,6 +24,15 @@ import {
 type MainTab = "inbox" | "paused" | "resolved" | "search";
 type SubTab = "attending" | "waiting" | "bot" | "groups";
 
+interface SearchResult {
+  id: string;
+  jid: string;
+  text: string;
+  timestamp: string;
+  senderName?: string;
+  fromMe: boolean;
+}
+
 export default function Conversations() {
   const { notify } = useNotifications();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -34,6 +44,8 @@ export default function Conversations() {
   const [selectedSector, setSelectedSector] = useState("all");
   const [typingJids, setTypingJids] = useState<Record<string, string>>({});
   const [showNewChat, setShowNewChat] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // WebSocket real-time updates
   const { isConnected: wsConnected } = useWebSocket({
@@ -105,6 +117,22 @@ export default function Conversations() {
     setSelectedJid(jid);
     api.getMessages(jid).then(setMessages);
   };
+
+  // Full-text search with debounce
+  useEffect(() => {
+    if (mainTab !== "search" || !search.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      api.searchMessages(search.trim()).then((results) => {
+        setSearchResults(results as unknown as SearchResult[]);
+        setIsSearching(false);
+      }).catch(() => setIsSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, mainTab]);
 
   const updateChatStatus = (jid: string, status: Chat["status"]) => {
     setChats((prev) =>
@@ -288,10 +316,58 @@ export default function Conversations() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar conversa..."
+                placeholder="Buscar em todas as mensagens..."
                 className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
               />
+              {isSearching && (
+                <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              )}
             </div>
+          </div>
+        )}
+
+        {/* Search Results */}
+        {mainTab === "search" && search.trim() && searchResults.length > 0 && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""} encontrado{searchResults.length !== 1 ? "s" : ""}
+            </div>
+            {searchResults.map((result) => {
+              const chat = chats.find((c) => c.jid === result.jid);
+              const time = (() => { try { return format(new Date(result.timestamp), "dd/MM HH:mm"); } catch { return ""; } })();
+              return (
+                <button
+                  key={result.id}
+                  onClick={() => loadMessages(result.jid)}
+                  className="flex items-start gap-3 p-3 text-left hover:bg-accent/50 transition-colors border-b border-border w-full"
+                >
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {(chat?.name || result.senderName || "?").charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-foreground truncate">
+                        {chat?.name || result.senderName || result.jid}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{time}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {result.fromMe && <span className="text-primary font-medium">Você: </span>}
+                      {result.text}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {mainTab === "search" && search.trim() && !isSearching && searchResults.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Search className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-xs">Nenhum resultado encontrado</p>
           </div>
         )}
 
