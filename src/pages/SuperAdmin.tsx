@@ -3,10 +3,12 @@ import {
   Building2, Users, CreditCard, Search, TrendingUp, Clock, Plus,
   Eye, Ban, Trash2, X, Edit2, CheckCircle2, AlertTriangle, RefreshCw,
   Shield, Mail, Phone, FileText, Power, Package, DollarSign, Zap,
-  BarChart3, MessageSquare, Activity,
+  BarChart3, MessageSquare, Activity, ScrollText, Filter,
 } from "lucide-react";
 import { useCompanyStore, type Company } from "@/stores/company-store";
 import { usePlanStore, type Plan } from "@/stores/plan-store";
+import { useAuditStore, actionLabels, actionColors, type AuditAction } from "@/stores/audit-store";
+import { useAuth } from "@/stores/auth-store";
 import { useTranslation } from "@/i18n/translations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,12 +31,13 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 type ModalMode = "create" | "edit" | "view" | null;
-type ActiveTab = "companies" | "plans" | "reports";
+type ActiveTab = "companies" | "plans" | "reports" | "audit";
 
 export default function SuperAdmin() {
   const { t } = useTranslation();
   const { companies, addCompany, updateCompany, deleteCompany } = useCompanyStore();
-  const [activeTab, setActiveTab] = useState<ActiveTab>("companies");
+  const { addLog } = useAuditStore();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
