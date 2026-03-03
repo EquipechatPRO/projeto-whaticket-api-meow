@@ -469,37 +469,129 @@ export default function ChatWindow({
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-2">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground">
-            <Paperclip className="w-4 h-4" />
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground">
-            <Smile className="w-4 h-4" />
-          </button>
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Digite uma mensagem..."
-            className="flex-1 bg-secondary rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() || sending}
-            className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-              text.trim()
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-secondary text-muted-foreground"
-            )}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+      {/* Image Preview */}
+      {imagePreview && (
+        <div className="border-t border-border bg-card px-4 py-3">
+          <div className="relative inline-block">
+            <img src={imagePreview.url} alt="Preview" className="max-h-[200px] rounded-lg object-contain" />
+            <button
+              onClick={() => { setImagePreview(null); setImageCaption(""); }}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="text"
+              value={imageCaption}
+              onChange={(e) => setImageCaption(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendImage()}
+              placeholder="Adicionar legenda..."
+              className="flex-1 bg-secondary rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              onClick={handleSendImage}
+              disabled={sending}
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Input */}
+      {!imagePreview && (
+        <div className="border-t border-border bg-card px-4 py-3">
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+
+          {isRecording ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={cancelRecording}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-destructive"
+                title="Cancelar"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="flex-1 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+                <span className="text-sm font-mono text-foreground">{formatRecTime(recordingTime)}</span>
+                <span className="text-xs text-muted-foreground">Gravando áudio...</span>
+              </div>
+              <button
+                onClick={stopRecording}
+                className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                title="Enviar áudio"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 relative">
+              <button
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                className={cn(
+                  "w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent transition-colors",
+                  showAttachMenu ? "text-primary bg-primary/10" : "text-muted-foreground"
+                )}
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+
+              {/* Attach menu */}
+              {showAttachMenu && (
+                <div className="absolute bottom-12 left-0 bg-card border border-border rounded-lg shadow-lg p-1 z-10 min-w-[160px]">
+                  <button
+                    onClick={() => { fileInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    <Image className="w-3.5 h-3.5 text-primary" />
+                    Enviar imagem
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); startRecording(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    <Mic className="w-3.5 h-3.5 text-primary" />
+                    Gravar áudio
+                  </button>
+                </div>
+              )}
+
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground">
+                <Smile className="w-4 h-4" />
+              </button>
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                placeholder="Digite uma mensagem..."
+                className="flex-1 bg-secondary rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
+              />
+              {text.trim() ? (
+                <button
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center bg-secondary text-muted-foreground hover:bg-accent transition-colors"
+                  title="Gravar áudio"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
 
       <ContactPanel
