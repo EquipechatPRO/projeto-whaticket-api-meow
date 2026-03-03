@@ -4,6 +4,7 @@ import api from "@/services/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Wifi, WifiOff, QrCode, RefreshCw, Settings, Check, Copy } from "lucide-react";
+import { useTranslation } from "@/i18n/translations";
 
 const ENDPOINTS = [
   { method: "GET", path: "/api/qrcode", desc: "Gerar QR Code" },
@@ -37,187 +38,99 @@ const ENDPOINTS = [
 ];
 
 export default function Connection() {
+  const { t } = useTranslation();
   const { baseUrl, setBaseUrl } = useConnectionStore();
   const [urlInput, setUrlInput] = useState(baseUrl);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<{ connected: boolean; phone?: string; name?: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSaveUrl = () => {
-    setBaseUrl(urlInput);
-    toast.success("URL salva com sucesso");
-  };
+  const handleSaveUrl = () => { setBaseUrl(urlInput); toast.success(t("conn.url_saved")); };
 
   const handleGetQR = async () => {
     setLoading(true);
-    try {
-      const res = await api.getQRCode();
-      setQrCode(res.qrcode);
-      toast.success("QR Code gerado");
-    } catch {
-      toast.error("Erro ao gerar QR Code");
-    } finally {
-      setLoading(false);
-    }
+    try { const res = await api.getQRCode(); setQrCode(res.qrcode); toast.success(t("conn.qr_generated")); }
+    catch { toast.error(t("conn.qr_error")); }
+    finally { setLoading(false); }
   };
 
   const handleCheckStatus = async () => {
-    try {
-      const res = await api.getStatus();
-      setStatus(res);
-    } catch {
-      toast.error("Erro ao verificar status");
-    }
+    try { const res = await api.getStatus(); setStatus(res); }
+    catch { toast.error(t("conn.status_error")); }
   };
 
   const handleDisconnect = async () => {
-    try {
-      await api.disconnect();
-      setStatus({ connected: false });
-      setQrCode(null);
-      toast.success("Desconectado");
-    } catch {
-      toast.error("Erro ao desconectar");
-    }
+    try { await api.disconnect(); setStatus({ connected: false }); setQrCode(null); toast.success(t("conn.disconnected_msg")); }
+    catch { toast.error(t("conn.disconnect_error")); }
   };
 
-  const copyEndpoint = (path: string) => {
-    navigator.clipboard.writeText(`${baseUrl}${path}`);
-    toast.success("Copiado!");
-  };
+  const copyEndpoint = (path: string) => { navigator.clipboard.writeText(`${baseUrl}${path}`); toast.success(t("conn.copied")); };
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Conexão WhatsApp</h1>
-      <p className="text-sm text-muted-foreground">
-        Configure a URL do servidor whatsmeow e gerencie a sessão do WhatsApp.
-      </p>
+      <h1 className="text-2xl font-bold text-foreground">{t("conn.title")}</h1>
+      <p className="text-sm text-muted-foreground">{t("conn.subtitle")}</p>
 
-      {/* URL Config */}
       <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold text-foreground">Configuração do Servidor</h2>
-        </div>
+        <div className="flex items-center gap-2"><Settings className="w-5 h-5 text-primary" /><h2 className="font-semibold text-foreground">{t("conn.server_config")}</h2></div>
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="http://seu-servidor:8080"
-            className="flex-1 bg-secondary rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button
-            onClick={handleSaveUrl}
-            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Salvar
-          </button>
+          <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder={t("conn.server_placeholder")} className="flex-1 bg-secondary rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring" />
+          <button onClick={handleSaveUrl} className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">{t("common.save")}</button>
         </div>
       </div>
 
-      {/* Session */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* QR Code */}
         <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <QrCode className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground">QR Code</h2>
-          </div>
-
+          <div className="flex items-center gap-2"><QrCode className="w-5 h-5 text-primary" /><h2 className="font-semibold text-foreground">{t("conn.qr_code")}</h2></div>
           {qrCode ? (
             <div className="bg-white rounded-lg p-6 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center mb-3">
-                  <QrCode className="w-24 h-24 text-foreground/20" />
-                </div>
-                <p className="text-xs text-muted-foreground">Escaneie com o WhatsApp</p>
+                <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center mb-3"><QrCode className="w-24 h-24 text-foreground/20" /></div>
+                <p className="text-xs text-muted-foreground">{t("conn.scan_qr")}</p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-              Clique para gerar o QR Code
-            </div>
+            <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">{t("conn.click_generate")}</div>
           )}
-
-          <button
-            onClick={handleGetQR}
-            disabled={loading}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <button onClick={handleGetQR} disabled={loading} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-            {loading ? "Gerando..." : "Gerar QR Code"}
+            {loading ? t("conn.generating") : t("conn.generate_qr")}
           </button>
         </div>
 
-        {/* Status */}
         <div className="bg-card rounded-xl border border-border p-5 space-y-4">
           <div className="flex items-center gap-2">
-            {status?.connected ? (
-              <Wifi className="w-5 h-5 text-primary" />
-            ) : (
-              <WifiOff className="w-5 h-5 text-destructive" />
-            )}
-            <h2 className="font-semibold text-foreground">Status da Sessão</h2>
+            {status?.connected ? <Wifi className="w-5 h-5 text-primary" /> : <WifiOff className="w-5 h-5 text-destructive" />}
+            <h2 className="font-semibold text-foreground">{t("conn.session_status")}</h2>
           </div>
-
           {status ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "w-3 h-3 rounded-full",
-                    status.connected ? "bg-primary" : "bg-destructive"
-                  )}
-                />
-                <span className="text-sm font-medium text-foreground">
-                  {status.connected ? "Conectado" : "Desconectado"}
-                </span>
+                <span className={cn("w-3 h-3 rounded-full", status.connected ? "bg-primary" : "bg-destructive")} />
+                <span className="text-sm font-medium text-foreground">{status.connected ? t("conn.connected") : t("conn.disconnected")}</span>
               </div>
-              {status.phone && (
-                <p className="text-sm text-muted-foreground">
-                  📱 {status.phone}
-                </p>
-              )}
-              {status.name && (
-                <p className="text-sm text-muted-foreground">
-                  👤 {status.name}
-                </p>
-              )}
+              {status.phone && <p className="text-sm text-muted-foreground">📱 {status.phone}</p>}
+              {status.name && <p className="text-sm text-muted-foreground">👤 {status.name}</p>}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-              Clique para verificar
-            </div>
+            <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">{t("conn.click_check")}</div>
           )}
-
           <div className="flex gap-2">
-            <button
-              onClick={handleCheckStatus}
-              className="flex-1 py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-            >
-              Verificar Status
-            </button>
-            <button
-              onClick={handleDisconnect}
-              className="flex-1 py-2.5 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
-            >
-              Desconectar
-            </button>
+            <button onClick={handleCheckStatus} className="flex-1 py-2.5 bg-secondary text-foreground rounded-lg text-sm font-medium hover:bg-accent transition-colors">{t("conn.check_status")}</button>
+            <button onClick={handleDisconnect} className="flex-1 py-2.5 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors">{t("conn.disconnect")}</button>
           </div>
         </div>
       </div>
 
-      {/* Endpoints Table */}
       <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 className="font-semibold text-foreground">Endpoints da API Whatsmeow</h2>
+        <h2 className="font-semibold text-foreground">{t("conn.endpoints")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Método</th>
-                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Endpoint</th>
-                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Descrição</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">{t("conn.method")}</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">{t("conn.endpoint")}</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">{t("conn.description")}</th>
                 <th className="py-2 px-3"></th>
               </tr>
             </thead>
@@ -225,27 +138,12 @@ export default function Connection() {
               {ENDPOINTS.map((ep) => (
                 <tr key={ep.path + ep.method} className="border-b border-border/50 hover:bg-accent/30">
                   <td className="py-2 px-3">
-                    <span
-                      className={cn(
-                        "text-xs font-bold px-2 py-0.5 rounded",
-                        ep.method === "GET" && "bg-primary/10 text-primary",
-                        ep.method === "POST" && "bg-accent text-accent-foreground",
-                        ep.method === "PUT" && "bg-secondary text-secondary-foreground"
-                      )}
-                    >
-                      {ep.method}
-                    </span>
+                    <span className={cn("text-xs font-bold px-2 py-0.5 rounded", ep.method === "GET" && "bg-primary/10 text-primary", ep.method === "POST" && "bg-accent text-accent-foreground", ep.method === "PUT" && "bg-secondary text-secondary-foreground")}>{ep.method}</span>
                   </td>
                   <td className="py-2 px-3 font-mono text-xs text-foreground">{ep.path}</td>
                   <td className="py-2 px-3 text-muted-foreground">{ep.desc}</td>
                   <td className="py-2 px-3">
-                    <button
-                      onClick={() => copyEndpoint(ep.path)}
-                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-accent text-muted-foreground"
-                      title="Copiar URL"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
+                    <button onClick={() => copyEndpoint(ep.path)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-accent text-muted-foreground" title="Copy"><Copy className="w-3.5 h-3.5" /></button>
                   </td>
                 </tr>
               ))}
