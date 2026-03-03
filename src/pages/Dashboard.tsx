@@ -228,7 +228,18 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+            {newMsgCount > 0 && (
+              <button
+                onClick={() => { setNewMsgCount(0); loadData(false); }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-pulse hover:animate-none hover:bg-destructive/90 transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                {newMsgCount} nova{newMsgCount > 1 ? "s" : ""}
+              </button>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             Dados em tempo real da API • {chats.length} conversas
             {lastUpdate && ` • Atualizado ${lastUpdate.toLocaleTimeString("pt-BR")}`}
