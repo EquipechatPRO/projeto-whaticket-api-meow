@@ -25,6 +25,19 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return res.json();
 }
 
+// ─── Per-connection helper ───────────────────────────────────
+function connRequest<T>(baseUrl: string, endpoint: string, options: RequestInit = {}): Promise<T> {
+  if (USE_MOCK) return mockResponse<T>(endpoint, options);
+  const url = `${baseUrl}${endpoint}`;
+  return fetch(url, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  }).then((res) => {
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    return res.json();
+  });
+}
+
 // ─── API ────────────────────────────────────────────────────
 export const api = {
   // Sessão
@@ -32,6 +45,12 @@ export const api = {
   getStatus: () => request<{ connected: boolean; phone: string; name: string }>("/api/status"),
   disconnect: () => request<{ success: boolean }>("/api/disconnect", { method: "POST" }),
   reconnect: () => request<{ success: boolean }>("/api/reconnect", { method: "POST" }),
+
+  // Per-connection session
+  getConnQRCode: (baseUrl: string) => connRequest<{ qrcode: string; status: string }>(baseUrl, "/api/qrcode"),
+  getConnStatus: (baseUrl: string) => connRequest<{ connected: boolean; phone: string; name: string }>(baseUrl, "/api/status"),
+  reconnectConn: (baseUrl: string) => connRequest<{ success: boolean }>(baseUrl, "/api/reconnect", { method: "POST" }),
+  disconnectConn: (baseUrl: string) => connRequest<{ success: boolean }>(baseUrl, "/api/disconnect", { method: "POST" }),
 
   // Mensagens
   sendText: (jid: string, text: string) =>
