@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Chat, api } from "@/services/api";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +28,10 @@ export default function ContactPanel({ chat, open, onClose }: Props) {
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
   const [profilePic, setProfilePic] = useState("");
+  const [tags, setTags] = useState<string[]>(chat.tags || []);
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const phone = chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "");
 
@@ -125,25 +129,79 @@ export default function ContactPanel({ chat, open, onClose }: Props) {
               <Tag className="w-3 h-3" />
               Tags
             </p>
-            <button className="text-[10px] text-primary font-semibold hover:underline">
+            <button
+              onClick={() => {
+                setShowTagInput(true);
+                setTimeout(() => tagInputRef.current?.focus(), 50);
+              }}
+              className="text-[10px] text-primary font-semibold hover:underline"
+            >
               + Adicionar
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {chat.tags && chat.tags.length > 0 ? (
-              chat.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold flex items-center gap-1"
-                >
-                  {tag}
-                  <X className="w-2.5 h-2.5 cursor-pointer hover:text-destructive" />
-                </span>
-              ))
-            ) : (
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold flex items-center gap-1"
+              >
+                {tag}
+                <X
+                  className="w-2.5 h-2.5 cursor-pointer hover:text-destructive transition-colors"
+                  onClick={() => {
+                    setTags((prev) => prev.filter((t) => t !== tag));
+                    toast.success(`Tag "${tag}" removida`);
+                  }}
+                />
+              </span>
+            ))}
+            {tags.length === 0 && !showTagInput && (
               <p className="text-xs text-muted-foreground">Nenhuma tag</p>
             )}
           </div>
+          {showTagInput && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <input
+                ref={tagInputRef}
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTag.trim()) {
+                    const trimmed = newTag.trim();
+                    if (!tags.includes(trimmed)) {
+                      setTags((prev) => [...prev, trimmed]);
+                      toast.success(`Tag "${trimmed}" adicionada`);
+                    }
+                    setNewTag("");
+                    setShowTagInput(false);
+                  }
+                  if (e.key === "Escape") {
+                    setNewTag("");
+                    setShowTagInput(false);
+                  }
+                }}
+                placeholder="Nome da tag..."
+                className="flex-1 bg-secondary rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring border border-border"
+              />
+              <button
+                onClick={() => {
+                  if (newTag.trim()) {
+                    const trimmed = newTag.trim();
+                    if (!tags.includes(trimmed)) {
+                      setTags((prev) => [...prev, trimmed]);
+                      toast.success(`Tag "${trimmed}" adicionada`);
+                    }
+                    setNewTag("");
+                  }
+                  setShowTagInput(false);
+                }}
+                className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap"
+              >
+                OK
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Notes */}
