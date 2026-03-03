@@ -261,6 +261,8 @@ export default function SuperAdmin() {
 
       {activeTab === "plans" && <PlansTab />}
 
+      {activeTab === "reports" && <ReportsTab companies={companies} />}
+
       {/* Create/Edit Modal */}
       {(modalMode === "create" || modalMode === "edit") && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setModalMode(null)}>
