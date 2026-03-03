@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { api, Chat, Message } from "@/services/api";
+import { useWebSocketStore } from "@/stores/websocket-store";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Clock, Users, Search } from "lucide-react";
+import { MessageSquare, Clock, Users, Search, Wifi, WifiOff } from "lucide-react";
 
 type Tab = "attending" | "waiting" | "groups";
 
@@ -14,22 +15,68 @@ export default function Conversations() {
   const [tab, setTab] = useState<Tab>("attending");
   const [search, setSearch] = useState("");
 
+  const wsConnected = useWebSocketStore((s) => s.connected);
+  const incomingMessages = useWebSocketStore((s) => s.incomingMessages);
+  const chatUpdates = useWebSocketStore((s) => s.chatUpdates);
+  const presences = useWebSocketStore((s) => s.presences);
+  const clearMessagesForJid = useWebSocketStore((s) => s.clearMessagesForJid);
+  const startListening = useWebSocketStore((s) => s.startListening);
+
+  // Start WebSocket connection
+  useEffect(() => {
+    const cleanup = startListening();
+    return cleanup;
+  }, [startListening]);
+
+  // Load initial chats
   useEffect(() => {
     api.getChats().then(setChats);
   }, []);
+
+  // Apply chat updates from WebSocket to local state
+  useEffect(() => {
+    if (Object.keys(chatUpdates).length === 0) return;
+
+    setChats((prev) =>
+      prev.map((chat) => {
+        const update = chatUpdates[chat.jid];
+        if (!update) return chat;
+        return { ...chat, ...update };
+      })
+    );
+  }, [chatUpdates]);
+
+  // Append real-time messages for the selected chat
+  useEffect(() => {
+    if (!selectedJid) return;
+    const newMsgs = incomingMessages[selectedJid];
+    if (!newMsgs || newMsgs.length === 0) return;
+
+    setMessages((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const uniqueNew = newMsgs.filter((m) => !existingIds.has(m.id));
+      if (uniqueNew.length === 0) return prev;
+      return [...prev, ...uniqueNew];
+    });
+
+    // Clear consumed messages from the store
+    clearMessagesForJid(selectedJid);
+  }, [selectedJid, incomingMessages, clearMessagesForJid]);
 
   const loadMessages = (jid: string) => {
     setSelectedJid(jid);
     api.getMessages(jid).then(setMessages);
   };
 
-  const filteredChats = chats.filter((c) => {
-    if (tab === "groups") return c.isGroup;
-    if (tab === "waiting") return !c.isGroup && c.status === "waiting";
-    return !c.isGroup && c.status !== "waiting";
-  }).filter((c) =>
-    search ? c.name.toLowerCase().includes(search.toLowerCase()) : true
-  );
+  const filteredChats = chats
+    .filter((c) => {
+      if (tab === "groups") return c.isGroup;
+      if (tab === "waiting") return !c.isGroup && c.status === "waiting";
+      return !c.isGroup && c.status !== "waiting";
+    })
+    .filter((c) =>
+      search ? c.name.toLowerCase().includes(search.toLowerCase()) : true
+    );
 
   const selectedChat = chats.find((c) => c.jid === selectedJid);
 
@@ -49,8 +96,19 @@ export default function Conversations() {
     <div className="flex h-full">
       {/* Left Panel */}
       <div className="w-80 border-r border-border flex flex-col bg-card shrink-0">
-        {/* Search */}
-        <div className="p-3 border-b border-border">
+        {/* WS Status + Search */}
+        <div className="p-3 border-b border-border space-y-2">
+          <div className="flex items-center gap-2 text-xs">
+            {wsConnected ? (
+              <span className="flex items-center gap-1 text-green-500">
+                <Wifi className="w-3 h-3" /> Tempo real ativo
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-destructive">
+                <WifiOff className="w-3 h-3" /> Reconectando...
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
             <Search className="w-4 h-4 text-muted-foreground" />
             <input
@@ -105,6 +163,7 @@ export default function Conversations() {
             chat={selectedChat}
             messages={messages}
             onMessageSent={() => loadMessages(selectedChat.jid)}
+            presence={presences[selectedChat.jid]}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
