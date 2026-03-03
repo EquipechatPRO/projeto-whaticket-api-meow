@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Chat, api } from "@/services/api";
 import { cn } from "@/lib/utils";
 import {
