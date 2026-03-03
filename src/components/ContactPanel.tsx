@@ -28,6 +28,10 @@ export default function ContactPanel({ chat, open, onClose }: Props) {
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
   const [profilePic, setProfilePic] = useState("");
+  const [tags, setTags] = useState<string[]>(chat.tags || []);
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const phone = chat.jid.replace("@s.whatsapp.net", "").replace("@g.us", "");
 
