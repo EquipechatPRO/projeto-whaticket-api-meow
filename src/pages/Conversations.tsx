@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, Chat, Message } from "@/services/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   MessageSquare,
   Clock,
@@ -27,6 +29,65 @@ export default function Conversations() {
   const [subTab, setSubTab] = useState<SubTab>("attending");
   const [search, setSearch] = useState("");
   const [selectedSector, setSelectedSector] = useState("all");
+  const [typingJids, setTypingJids] = useState<Record<string, string>>({});
+
+  // WebSocket real-time updates
+  const { isConnected: wsConnected } = useWebSocket({
+    onMessage: useCallback((msg: Message) => {
+      // Add to messages if viewing that chat
+      setMessages((prev) => {
+        if (selectedJid === msg.jid) {
+          return [...prev, msg];
+        }
+        return prev;
+      });
+      // Update chat list
+      setChats((prev) => {
+        const existing = prev.find((c) => c.jid === msg.jid);
+        if (existing) {
+          return prev.map((c): Chat =>
+            c.jid === msg.jid
+              ? { ...c, lastMessage: msg.text, lastMessageTime: msg.timestamp, unreadCount: selectedJid === msg.jid ? c.unreadCount : c.unreadCount + 1 }
+              : c
+          );
+        }
+        // New chat
+        return [
+          {
+            jid: msg.jid,
+            name: msg.senderName || msg.jid,
+            lastMessage: msg.text,
+            lastMessageTime: msg.timestamp,
+            unreadCount: 1,
+            isGroup: msg.jid.includes("@g.us"),
+            status: "waiting" as const,
+          },
+          ...prev,
+        ];
+      });
+      if (!msg.fromMe && selectedJid !== msg.jid) {
+        toast.info(`Nova mensagem de ${msg.senderName || msg.jid}`);
+      }
+    }, [selectedJid]),
+    onTyping: useCallback((data: { jid: string; from: string; state: string }) => {
+      if (data.state === "composing") {
+        setTypingJids((prev) => ({ ...prev, [data.jid]: data.from }));
+        setTimeout(() => {
+          setTypingJids((prev) => {
+            const next = { ...prev };
+            delete next[data.jid];
+            return next;
+          });
+        }, 5000);
+      } else {
+        setTypingJids((prev) => {
+          const next = { ...prev };
+          delete next[data.jid];
+          return next;
+        });
+      }
+    }, []),
+  });
 
   useEffect(() => {
     api.getChats().then(setChats);
