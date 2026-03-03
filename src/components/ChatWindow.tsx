@@ -720,7 +720,7 @@ export default function ChatWindow({
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <MapPin className="w-4 h-4 text-indigo-500" />
-                    Catálogo
+                    Localização
                   </button>
                   <button
                     onClick={() => {
