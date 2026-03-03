@@ -59,15 +59,20 @@ export default function TopNavbar() {
   const navLinks = [
     { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
     { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
-    { to: "/contacts", icon: Bot, label: t("nav.contacts") },
     { to: "/queues", icon: Shield, label: t("nav.queues") },
-    { to: "/flows", icon: GitBranch, label: "Fluxos" },
-    { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
     ...(user?.role === "company_admin" || isSuperAdmin
       ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
       : []),
-    { to: "/connection", icon: Settings, label: t("nav.connection") },
   ];
+
+  const managementLinks = [
+    { to: "/connection", icon: Settings, label: t("nav.connection") },
+    { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
+    { to: "/flows", icon: GitBranch, label: "Fluxos" },
+    { to: "/contacts", icon: Bot, label: t("nav.contacts") },
+  ];
+
+  const isManagementActive = managementLinks.some((l) => location.pathname === l.to);
 
   const handleLogout = () => {
     logout();
