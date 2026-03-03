@@ -91,6 +91,13 @@ export default function ChatWindow({
   const docInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [docPreview, setDocPreview] = useState<{ file: File; name: string } | null>(null);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [stickerInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
