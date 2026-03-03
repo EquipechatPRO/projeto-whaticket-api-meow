@@ -581,7 +581,257 @@ function PlansTab() {
   );
 }
 
-function LimitRow({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
+/* ─── Reports Tab ─── */
+const CHART_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--info, 200 80% 55%))",
+  "hsl(var(--warning, 38 92% 50%))",
+  "hsl(var(--destructive))",
+  "hsl(150 60% 45%)",
+  "hsl(280 60% 55%)",
+];
+
+function generateMockMetrics(companies: Company[]) {
+  const seed = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  };
+
+  return companies.filter(c => c.status !== "suspended").map((c) => {
+    const s = seed(c.id);
+    const conversations = 50 + (s % 500);
+    const messages = conversations * (3 + (s % 8));
+    const avgResponseTime = 1 + (s % 15);
+    const satisfaction = 60 + (s % 40);
+    return { name: c.name, slug: c.slug, plan: c.plan, conversations, messages, agents: c.agentCount, maxAgents: c.maxAgents, avgResponseTime, satisfaction };
+  });
+}
+
+function generateMonthlyTrend(companies: Company[]) {
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"];
+  return months.map((m, i) => {
+    const base = companies.filter(c => c.status !== "suspended").length;
+    return {
+      month: m,
+      conversas: Math.round(base * (80 + i * 30 + Math.sin(i) * 20)),
+      mensagens: Math.round(base * (300 + i * 120 + Math.cos(i) * 80)),
+      atendentes: companies.reduce((a, c) => a + c.agentCount, 0) + i * 2,
+    };
+  });
+}
+
+function ReportsTab({ companies }: { companies: Company[] }) {
+  const metrics = useMemo(() => generateMockMetrics(companies), [companies]);
+  const trend = useMemo(() => generateMonthlyTrend(companies), [companies]);
+
+  const planDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    companies.forEach((c) => { counts[c.plan] = (counts[c.plan] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({
+      name: planConfig[name]?.label || name,
+      value,
+    }));
+  }, [companies]);
+
+  const totalConversas = metrics.reduce((a, m) => a + m.conversations, 0);
+  const totalMensagens = metrics.reduce((a, m) => a + m.messages, 0);
+  const totalAgents = metrics.reduce((a, m) => a + m.agents, 0);
+  const avgSatisfaction = metrics.length ? Math.round(metrics.reduce((a, m) => a + m.satisfaction, 0) / metrics.length) : 0;
+
+  const summaryCards = [
+    { label: "Total conversas", value: totalConversas.toLocaleString("pt-BR"), icon: MessageSquare, color: "text-primary" },
+    { label: "Total mensagens", value: totalMensagens.toLocaleString("pt-BR"), icon: Mail, color: "text-info-foreground" },
+    { label: "Atendentes ativos", value: totalAgents, icon: Users, color: "text-warning-foreground" },
+    { label: "Satisfação média", value: `${avgSatisfaction}%`, icon: Activity, color: "text-primary" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((s) => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">{s.label}</span>
+              <s.icon className={cn("w-5 h-5", s.color)} />
+            </div>
+            <p className="text-2xl font-bold text-foreground">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Trend */}
+        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" /> Evolução mensal
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={trend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="conversas" name="Conversas" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="mensagens" name="Mensagens" stroke={CHART_COLORS[1]} fill={CHART_COLORS[1]} fillOpacity={0.1} strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Plan distribution */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" /> Distribuição por plano
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value" label={({ name, value }) => `${name} (${value})`}>
+                {planDistribution.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Charts Row 2 - Per company */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Conversations per company */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-primary" /> Conversas por empresa
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={metrics} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              <Bar dataKey="conversations" name="Conversas" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Messages per company */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Mail className="w-4 h-4 text-primary" /> Mensagens por empresa
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={metrics} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              <Bar dataKey="messages" name="Mensagens" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Agents usage + satisfaction */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" /> Uso de atendentes por empresa
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={metrics}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-20} textAnchor="end" height={50} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="agents" name="Em uso" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="maxAgents" name="Limite" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} opacity={0.4} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" /> Tempo de resposta e satisfação
+          </h3>
+          <div className="space-y-3">
+            {metrics.map((m, i) => (
+              <div key={m.slug} className="flex items-center gap-3">
+                <div className="w-24 text-xs font-medium text-foreground truncate">{m.name}</div>
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                      <span>Satisfação</span>
+                      <span>{m.satisfaction}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${m.satisfaction}%`,
+                          backgroundColor: m.satisfaction >= 80 ? CHART_COLORS[4] : m.satisfaction >= 60 ? CHART_COLORS[2] : CHART_COLORS[3],
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground w-16 text-right">
+                    <span className="font-medium text-foreground">{m.avgResponseTime}min</span> resp.
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Detalhamento por empresa</h3>
+        </div>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="text-left text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Empresa</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Plano</th>
+              <th className="text-right text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Conversas</th>
+              <th className="text-right text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Mensagens</th>
+              <th className="text-right text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Atendentes</th>
+              <th className="text-right text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Resp. média</th>
+              <th className="text-right text-xs font-semibold text-muted-foreground uppercase px-4 py-2">Satisfação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map((m) => (
+              <tr key={m.slug} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
+                <td className="px-4 py-2.5 text-sm font-medium text-foreground">{m.name}</td>
+                <td className="px-4 py-2.5">
+                  <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", planConfig[m.plan]?.color || "bg-muted text-muted-foreground")}>
+                    {planConfig[m.plan]?.label || m.plan}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-sm text-foreground text-right">{m.conversations.toLocaleString("pt-BR")}</td>
+                <td className="px-4 py-2.5 text-sm text-foreground text-right">{m.messages.toLocaleString("pt-BR")}</td>
+                <td className="px-4 py-2.5 text-sm text-foreground text-right">{m.agents}/{m.maxAgents}</td>
+                <td className="px-4 py-2.5 text-sm text-foreground text-right">{m.avgResponseTime} min</td>
+                <td className="px-4 py-2.5 text-right">
+                  <span className={cn("text-xs font-semibold", m.satisfaction >= 80 ? "text-primary" : m.satisfaction >= 60 ? "text-warning-foreground" : "text-destructive")}>
+                    {m.satisfaction}%
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
   return (
     <div className="flex items-center justify-between">
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="w-3 h-3" />{label}</span>
