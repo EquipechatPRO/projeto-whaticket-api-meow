@@ -4,6 +4,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 import NewChatModal from "@/components/NewChatModal";
+import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
