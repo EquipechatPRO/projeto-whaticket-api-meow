@@ -52,22 +52,20 @@ export default function TopNavbar() {
 
   const isSuperAdmin = user?.role === "super_admin";
 
-  const navLinks = isSuperAdmin
-    ? [
-        { to: "/", icon: LayoutDashboard, label: t("nav.companies") },
-        { to: "/connection", icon: Settings, label: t("nav.settings") },
-      ]
-    : [
-        { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
-        { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
-        { to: "/contacts", icon: Bot, label: t("nav.contacts") },
-        { to: "/queues", icon: Shield, label: t("nav.queues") },
-        { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
-        ...(user?.role === "company_admin" || user?.role === "super_admin"
-          ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
-          : []),
-        { to: "/connection", icon: Settings, label: t("nav.connection") },
-      ];
+  const navLinks = [
+    { to: "/", icon: LayoutDashboard, label: t("nav.dashboard") },
+    { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
+    { to: "/contacts", icon: Bot, label: t("nav.contacts") },
+    { to: "/queues", icon: Shield, label: t("nav.queues") },
+    { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
+    ...(user?.role === "company_admin" || isSuperAdmin
+      ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]
+      : []),
+    { to: "/connection", icon: Settings, label: t("nav.connection") },
+    ...(isSuperAdmin
+      ? [{ to: "/admin", icon: Building2, label: "Master Admin" }]
+      : []),
+  ];
 
   const handleLogout = () => {
     logout();
