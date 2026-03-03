@@ -41,15 +41,18 @@ export default function TopNavbar() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
   const [notifTab, setNotifTab] = useState<"messages" | "settings">("messages");
 
   const langRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLDivElement>(null);
+  const managementRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(langRef, () => setShowLangMenu(false));
   useClickOutside(notifRef, () => setShowNotifMenu(false));
   useClickOutside(hamburgerRef, () => setShowHamburger(false));
+  useClickOutside(managementRef, () => setShowManagement(false));
 
   const isSuperAdmin = user?.role === "super_admin";
 
