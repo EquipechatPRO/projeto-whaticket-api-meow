@@ -635,27 +635,95 @@ export default function ChatWindow({
 
               {/* Attach menu */}
               {showAttachMenu && (
-                <div className="absolute bottom-12 left-0 bg-card border border-border rounded-lg shadow-lg p-1 z-10 min-w-[160px]">
-                  <button
-                    onClick={() => { fileInputRef.current?.click(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
-                  >
-                    <Image className="w-3.5 h-3.5 text-primary" />
-                    Enviar imagem
-                  </button>
+                <div className="absolute bottom-12 left-0 bg-card border border-border rounded-xl shadow-xl p-1.5 z-10 w-[200px]">
                   <button
                     onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
-                    <FileText className="w-3.5 h-3.5 text-primary" />
-                    Enviar documento
+                    <FileText className="w-4 h-4 text-violet-500" />
+                    Documento
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Image className="w-4 h-4 text-blue-500" />
+                    Fotos e vídeos
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); videoInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Camera className="w-4 h-4 text-pink-500" />
+                    Câmera
                   </button>
                   <button
                     onClick={() => { setShowAttachMenu(false); startRecording(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
-                    <Mic className="w-3.5 h-3.5 text-primary" />
-                    Gravar áudio
+                    <Mic className="w-4 h-4 text-orange-500" />
+                    Áudio
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Envio de contato em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Contact className="w-4 h-4 text-sky-500" />
+                    Contato
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Enquetes em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <BarChart3 className="w-4 h-4 text-green-500" />
+                    Enquete
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Eventos em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <CalendarDays className="w-4 h-4 text-amber-500" />
+                    Evento
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Figurinhas em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Sticker className="w-4 h-4 text-teal-500" />
+                    Nova figurinha
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Pix em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
+                    Pix
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Catálogo em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <MapPin className="w-4 h-4 text-indigo-500" />
+                    Catálogo
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      setText("/");
+                      setShowQuickReplies(true);
+                      setQuickReplyFilter("");
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Zap className="w-4 h-4 text-yellow-500" />
+                    Resposta rápida
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); toast.info("Cobranças em breve"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4 text-rose-500" />
+                    Cobrar
                   </button>
                 </div>
               )}
