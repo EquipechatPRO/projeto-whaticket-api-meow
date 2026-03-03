@@ -482,7 +482,23 @@ export default function ChatWindow({
                     </div>
                   )}
 
-                  {/* Text message */}
+                  {/* Document message */}
+                  {msg.type === "document" && msg.mediaUrl && (
+                    <div
+                      className="flex items-center gap-3 min-w-[200px] p-1 cursor-pointer hover:opacity-80"
+                      onClick={() => window.open(msg.mediaUrl, "_blank")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{msg.caption || "Documento"}</p>
+                        <p className="text-[10px] text-muted-foreground">Clique para abrir</p>
+                      </div>
+                      <Download className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </div>
+                  )}
+
                   {(msg.type === "text" || (!msg.type && !msg.mediaUrl)) && (
                     <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{msg.text}</p>
                   )}
