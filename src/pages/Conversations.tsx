@@ -132,6 +132,8 @@ export default function Conversations() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, mainTab]);
+
+  const updateChatStatus = (jid: string, status: Chat["status"]) => {
     setChats((prev) =>
       prev.map((c): Chat => (c.jid === jid ? { ...c, status } : c))
     );
