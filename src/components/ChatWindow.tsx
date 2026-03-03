@@ -596,8 +596,9 @@ export default function ChatWindow({
       {/* Input */}
       {!imagePreview && !docPreview && (
         <div className="border-t border-border bg-card px-4 py-3">
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleImageSelect} />
           <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar" className="hidden" onChange={handleDocSelect} />
+          <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleImageSelect} />
 
           {isRecording ? (
             <div className="flex items-center gap-3">
