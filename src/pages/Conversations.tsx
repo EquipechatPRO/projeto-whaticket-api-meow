@@ -3,6 +3,7 @@ import { api, Chat, Message } from "@/services/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
+import NewChatModal from "@/components/NewChatModal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
