@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import api, { Chat, Message } from "@/services/api";
+import api, { Chat, Message, DashboardStats } from "@/services/api";
 import {
   Wifi, WifiOff, MessageSquare, Users, Clock, TrendingUp,
   ArrowUpRight, ArrowDownRight, Phone, BarChart3, Activity,
@@ -15,21 +15,8 @@ import {
 
 // ── Helpers ──
 
-function groupMessagesByHour(messages: Message[]) {
-  const hours: Record<string, { enviadas: number; recebidas: number }> = {};
-  for (let i = 0; i < 24; i++) {
-    hours[String(i).padStart(2, "0")] = { enviadas: 0, recebidas: 0 };
-  }
-  messages.forEach((m) => {
-    const h = new Date(m.timestamp).getHours();
-    const key = String(h).padStart(2, "0");
-    if (hours[key]) {
-      if (m.fromMe) hours[key].enviadas++;
-      else hours[key].recebidas++;
-    }
-  });
-  return Object.entries(hours).map(([hour, data]) => ({ hour: `${hour}h`, ...data }));
-}
+// groupMessagesByHour is now computed server-side via /api/stats
+
 
 function getStatusDistribution(chats: Chat[]) {
   const counts = { attending: 0, waiting: 0, resolved: 0, paused: 0, closed: 0, other: 0 };
@@ -144,7 +131,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<{ connected: boolean; phone?: string; name?: string } | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
@@ -154,18 +141,14 @@ export default function Dashboard() {
   const loadData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const [statusRes, chatsRes] = await Promise.all([
+      const [statusRes, chatsRes, statsRes] = await Promise.all([
         api.getStatus().catch(() => ({ connected: false, phone: "", name: "" })),
         api.getChats().catch(() => [] as Chat[]),
+        api.getStats().catch(() => null),
       ]);
       setStatus(statusRes);
       setChats(chatsRes);
-
-      const chatSlice = chatsRes.slice(0, 20);
-      const msgResults = await Promise.all(
-        chatSlice.map((c) => api.getMessages(c.jid, 100).catch(() => [] as Message[]))
-      );
-      setAllMessages(msgResults.flat());
+      if (statsRes) setStats(statsRes);
       setLastUpdate(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -185,19 +168,21 @@ export default function Dashboard() {
     return () => clearInterval(intervalRef.current);
   }, [autoRefresh, loadData]);
 
-  // Derived data
-  const hourlyMessages = useMemo(() => groupMessagesByHour(allMessages), [allMessages]);
+  // Derived data from stats endpoint
+  const hourlyMessages = stats?.hourlyVolume || [];
   const statusDist = useMemo(() => getStatusDistribution(chats), [chats]);
   const agentPerf = useMemo(() => getAgentPerformance(chats), [chats]);
   const queueDist = useMemo(() => getQueueDistribution(chats), [chats]);
+  const dailyVolume = stats?.dailyVolume || [];
 
-  const totalMessages = allMessages.length;
-  const sentMessages = allMessages.filter((m) => m.fromMe).length;
-  const receivedMessages = totalMessages - sentMessages;
+  const totalMessages = stats?.totalMessages || 0;
+  const sentMessages = stats?.sentToday || 0;
+  const receivedMessages = stats?.receivedToday || 0;
   const activeChats = chats.filter((c) => c.status === "attending").length;
   const waitingChats = chats.filter((c) => c.status === "waiting").length;
   const resolvedChats = chats.filter((c) => c.status === "resolved" || c.status === "closed").length;
   const totalUnread = chats.reduce((a, c) => a + c.unreadCount, 0);
+  const avgResponseTime = stats?.avgResponseTime || "—";
 
   const queueColors = ["hsl(210, 80%, 55%)", "hsl(142, 72%, 29%)", "hsl(38, 92%, 50%)", "hsl(280, 60%, 55%)", "hsl(0, 70%, 55%)"];
 
@@ -262,10 +247,10 @@ export default function Dashboard() {
           loading={loading}
         />
         <KPICard
-          title="Não Lidas"
-          value={String(totalUnread)}
-          subtitle="mensagens pendentes"
-          icon={AlertCircle}
+          title="Tempo Médio"
+          value={avgResponseTime}
+          subtitle={`${stats?.responseSamples || 0} amostras`}
+          icon={Clock}
           color="bg-warning/10 text-warning"
           loading={loading}
         />
@@ -354,23 +339,21 @@ export default function Dashboard() {
           )}
         </ChartCard>
 
-        <ChartCard title="Grupos vs Individuais" subtitle="Tipos de conversa">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={[
-                  { name: "Individuais", value: chats.filter((c) => !c.isGroup).length },
-                  { name: "Grupos", value: chats.filter((c) => c.isGroup).length },
-                ]}
-                cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value"
-              >
-                <Cell fill="hsl(210, 80%, 55%)" />
-                <Cell fill="hsl(142, 72%, 29%)" />
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <ChartCard title="Volume Diário" subtitle={`Últimos ${dailyVolume.length} dias • do servidor`}>
+          {dailyVolume.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={dailyVolume} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(210, 10%, 55%)" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="enviadas" fill="hsl(142, 72%, 29%)" radius={[4, 4, 0, 0]} name="Enviadas" />
+                <Bar dataKey="recebidas" fill="hsl(210, 80%, 55%)" radius={[4, 4, 0, 0]} name="Recebidas" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-10">Sem dados diários</p>
+          )}
         </ChartCard>
       </div>
 
@@ -433,8 +416,9 @@ export default function Dashboard() {
                 { icon: CheckCircle2, label: "Resolvidos", value: String(resolvedChats), color: "text-primary" },
                 { icon: PauseCircle, label: "Aguardando", value: String(waitingChats), color: "text-warning" },
                 { icon: AlertCircle, label: "Não lidas", value: String(totalUnread), color: "text-destructive" },
-                { icon: Users, label: "Grupos", value: String(chats.filter((c) => c.isGroup).length), color: "text-blue-500" },
-                { icon: MessageSquare, label: "Total mensagens", value: String(totalMessages), color: "text-primary" },
+                { icon: Clock, label: "Tempo médio", value: avgResponseTime, color: "text-warning" },
+                { icon: Users, label: "Grupos", value: String(stats?.totalGroups || chats.filter((c) => c.isGroup).length), color: "text-blue-500" },
+                { icon: MessageSquare, label: "Mensagens total", value: String(totalMessages), color: "text-primary" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

@@ -78,6 +78,9 @@ export const api = {
   deleteMessage: (jid: string, messageId: string) =>
     request<{ success: boolean }>("/api/messages/delete", { method: "POST", body: JSON.stringify({ jid, message_id: messageId }) }),
 
+  // Estatísticas
+  getStats: () => request<DashboardStats>("/api/stats"),
+
   // Filas de atendimento (gerenciado no frontend)
   transferChat: (jid: string, toUser: string) =>
     request<{ success: boolean }>("/api/transfer", { method: "POST", body: JSON.stringify({ jid, to_user: toUser }) }),
@@ -121,6 +124,22 @@ export interface Contact {
   avatar?: string;
 }
 
+export interface DashboardStats {
+  totalMessages: number;
+  sentToday: number;
+  receivedToday: number;
+  sentWeek: number;
+  receivedWeek: number;
+  totalChats: number;
+  totalGroups: number;
+  avgResponseTimeMs: number;
+  avgResponseTime: string;
+  hourlyVolume: { hour: string; enviadas: number; recebidas: number }[];
+  dailyVolume: { date: string; day: string; enviadas: number; recebidas: number; total: number }[];
+  responseSamples: number;
+  timestamp: string;
+}
+
 export interface Group {
   jid: string;
   name: string;
@@ -157,6 +176,27 @@ async function mockResponse<T>(endpoint: string, options: RequestInit = {}): Pro
   if (endpoint === "/api/contacts") return MOCK_CHATS.filter(c => !c.isGroup).map(c => ({ jid: c.jid, name: c.name, pushName: c.name, phone: c.jid.replace("@s.whatsapp.net", "") })) as T;
   if (endpoint === "/api/groups") return MOCK_CHATS.filter(c => c.isGroup).map(c => ({ jid: c.jid, name: c.name, description: "Grupo de trabalho", participants: [] })) as T;
   if (endpoint.includes("/api/send/")) return { id: "mock_" + Date.now() } as T;
+  if (endpoint === "/api/stats") {
+    const hourly = Array.from({ length: 24 }, (_, i) => ({
+      hour: `${String(i).padStart(2, "0")}h`,
+      enviadas: Math.floor(Math.random() * 80 + (i > 7 && i < 20 ? 40 : 5)),
+      recebidas: Math.floor(Math.random() * 100 + (i > 7 && i < 20 ? 60 : 8)),
+    }));
+    const daily = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((day, i) => ({
+      date: `2026-03-${String(i + 1).padStart(2, "0")}`, day,
+      enviadas: Math.floor(Math.random() * 100 + 30),
+      recebidas: Math.floor(Math.random() * 120 + 40),
+      total: 0,
+    }));
+    daily.forEach(d => d.total = d.enviadas + d.recebidas);
+    return {
+      totalMessages: 1847, sentToday: 234, receivedToday: 312,
+      sentWeek: 890, receivedWeek: 957, totalChats: 45, totalGroups: 8,
+      avgResponseTimeMs: 204000, avgResponseTime: "3m 24s",
+      hourlyVolume: hourly, dailyVolume: daily, responseSamples: 156,
+      timestamp: new Date().toISOString(),
+    } as T;
+  }
   if (endpoint === "/api/disconnect" || endpoint === "/api/reconnect") return { success: true } as T;
   if (endpoint === "/api/transfer" || endpoint === "/api/close") return { success: true } as T;
   if (endpoint === "/api/webhook") return options.method === "POST" ? { success: true } as T : { url: "", events: [] } as T;
