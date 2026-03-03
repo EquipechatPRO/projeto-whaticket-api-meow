@@ -890,7 +890,7 @@ function AuditTab() {
     plan_deactivated: Ban,
     user_login: Users,
     user_logout: Users,
-    settings_changed: Settings,
+    settings_changed: RefreshCw,
   };
 
   return (
