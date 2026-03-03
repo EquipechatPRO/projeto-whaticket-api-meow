@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Building2, Users, CreditCard, Search, TrendingUp, Clock, Plus,
   Eye, Ban, Trash2, X, Edit2, CheckCircle2, AlertTriangle, RefreshCw,
   Shield, Mail, Phone, FileText, Power, Package, DollarSign, Zap,
+  BarChart3, MessageSquare, Activity,
 } from "lucide-react";
 import { useCompanyStore, type Company } from "@/stores/company-store";
 import { usePlanStore, type Plan } from "@/stores/plan-store";
 import { useTranslation } from "@/i18n/translations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart,
+} from "recharts";
 
 const planConfig: Record<string, { label: string; color: string; maxAgentsDefault: number }> = {
   free: { label: "Free", color: "bg-muted text-muted-foreground", maxAgentsDefault: 2 },
@@ -24,7 +29,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 type ModalMode = "create" | "edit" | "view" | null;
-type ActiveTab = "companies" | "plans";
+type ActiveTab = "companies" | "plans" | "reports";
 
 export default function SuperAdmin() {
   const { t } = useTranslation();
@@ -145,6 +150,15 @@ export default function SuperAdmin() {
           )}
         >
           <Package className="w-4 h-4" /> Planos
+        </button>
+        <button
+          onClick={() => setActiveTab("reports")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            activeTab === "reports" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <BarChart3 className="w-4 h-4" /> Relatórios
         </button>
       </div>
 
