@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, MessageSquare, Bot, Shield, Settings,
-  Search, Bell, Moon, Sun, MessageCircle, Zap, LogOut, Building2,
+  Search, Bell, Moon, Sun, MessageCircle, Zap, LogOut, Building2, GitBranch,
   Menu, User, Users, CreditCard, Key, HelpCircle,
   BellRing, Volume2,
 } from "lucide-react";
@@ -57,6 +57,7 @@ export default function TopNavbar() {
     { to: "/conversations", icon: MessageSquare, label: t("nav.conversations") },
     { to: "/contacts", icon: Bot, label: t("nav.contacts") },
     { to: "/queues", icon: Shield, label: t("nav.queues") },
+    { to: "/flows", icon: GitBranch, label: "Fluxos" },
     { to: "/quick-replies", icon: Zap, label: t("nav.quick_replies") },
     ...(user?.role === "company_admin" || isSuperAdmin
       ? [{ to: "/users", icon: Users, label: t("users.title").split(" ")[0] }]

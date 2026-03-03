@@ -9,6 +9,8 @@ import Contacts from "./pages/Contacts";
 import Dashboard from "./pages/Dashboard";
 import Queues from "./pages/Queues";
 import QuickRepliesPage from "./pages/QuickRepliesPage";
+import Flows from "./pages/Flows";
+import FlowBuilder from "./pages/FlowBuilder";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SuperAdmin from "./pages/SuperAdmin";
@@ -38,6 +40,8 @@ function AppRoutes() {
         <Route path="/conversations" element={<Conversations />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/queues" element={<Queues />} />
+        <Route path="/flows" element={<Flows />} />
+        <Route path="/flows/:id" element={<FlowBuilder />} />
         <Route path="/quick-replies" element={<QuickRepliesPage />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/connection" element={<Connection />} />
